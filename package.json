@@ -5,7 +5,8 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/leaflet": "^1.9.18",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "zarrita": "^0.5.1"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -14,5 +15,7 @@
     "build-demo": "bun build demo/demo.ts --outdir=demo/",
     "serve-demo": "bunx serve demo",
     "start-demo": "bun run build-demo && bun run serve-demo",
+    "watch-build": "bun build demo/demo.ts --outdir=demo/ --watch",
+    "watch-demo": "bun run watch-build & bun run serve-demo"
   }
 }
