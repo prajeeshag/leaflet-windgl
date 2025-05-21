@@ -1,0 +1,18 @@
+{
+  "name": "leaflet-windgl",
+  "module": "src/index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/leaflet": "^1.9.18",
+    "leaflet": "^1.9.4"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "scripts": {
+    "build-demo": "bun build demo/demo.ts --outdir=demo/",
+    "serve-demo": "bunx serve demo",
+    "start-demo": "bun run build-demo && bun run serve-demo",
+  }
+}
