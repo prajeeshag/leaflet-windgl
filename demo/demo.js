@@ -1,5 +1,5 @@
 import * as zarr from "https://cdn.jsdelivr.net/npm/zarrita/+esm";
-import { leafletWindGL, WindData } from "/dist/leaflet-windgl.js";
+import { WindData, LeafletWindGL } from "/dist/leaflet-windgl.js";
 // import { WindData } from "./windgl.js";
 // import WindGL from "./windgl.js";
 
@@ -51,7 +51,7 @@ const windData = new WindData(
     uArr.shape[0],
 );
 
-const windLayer = new leafletWindGL(windData)
+const windLayer = new LeafletWindGL(windData)
 windLayer.addTo(map);
 
 // const windLayer = new WindGL(gl, windData);

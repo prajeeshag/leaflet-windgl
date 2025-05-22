@@ -4,27 +4,34 @@ import WindGL from './wind/windgl';
 
 const L = globalThis.L as typeof import('leaflet');
 
-const LeafletWindGL = L.Layer.extend({
-    initialize: function (windData: WindData, options?: L.LayerOptions) {
+export class LeafletWindGL extends L.Layer {
+    private _windData: WindData;
+    private _canvas!: HTMLCanvasElement;
+    private _windGl!: WindGL;
+    // private _map!: L.Map;
+    private _animationId: number | null = null;
+    private _prev_time!: number;
+    private _delta_time: number = 0;
+    private _facAnim: number = 0.001 / 120.;
+
+    constructor(windData: WindData, options?: L.LayerOptions) {
+        super(options);
         L.setOptions(this, options);
         this._windData = windData;
-        this._frame = this._frame.bind(this)
-        this._animationId = null;
-    },
+        this._frame = this._frame.bind(this);
+    }
 
-    onAdd: function (map: L.Map) {
+    onAdd(map: L.Map): this {
         this._map = map;
         this._canvas = L.DomUtil.create('canvas', 'leaflet-purple-canvas') as HTMLCanvasElement;
         if (!this._canvas) {
             throw new Error('Failed to create canvas element');
         }
-        // get webgl from canvas
         const gl = this._canvas.getContext('webgl') as WebGLRenderingContext;
         if (!gl) {
             throw new Error('Failed to get WebGL context');
         }
         this._windGl = new WindGL(gl, this._windData);
-        // Set the canvas size to the map size 
         this._canvas.style.position = 'absolute';
         this._updateSize();
 
@@ -32,47 +39,50 @@ const LeafletWindGL = L.Layer.extend({
 
         map.on('move resize zoom', this._reset, this);
         this._reset();
-    },
+        return this;
+    }
 
-    onRemove: function (map: L.Map) {
+    onRemove(map: L.Map): this {
         map.getPanes().overlayPane.removeChild(this._canvas);
         map.off('move resize zoom', this._reset, this);
-    },
+        this._stopAnimation();
+        return this;
+    }
 
-    _updateSize: function () {
+    private _updateSize() {
         // Don't set the size here as we'll set it in _draw based on the geographic bounds
-    },
+    }
 
-    _reset: function () {
+    private _reset = () => {
         this._updateSize();
         this._draw();
-    },
+    };
 
-    _frame: function () {
+    private _frame() {
         this._windGl.draw(this._delta_time);
         const time = performance.now();
-        this._delta_time += (time - this._prev_time) * this._facAnim
+        this._delta_time += (time - this._prev_time) * this._facAnim;
         console.log(this._delta_time);
         this._delta_time = this._delta_time % 1.5;
         this._prev_time = time;
         this._animationId = requestAnimationFrame(this._frame);
-    },
+    }
 
-    _startAnimation: function () {
+    private _startAnimation() {
         if (this._animationId !== null) {
             cancelAnimationFrame(this._animationId);
         }
         this._animationId = requestAnimationFrame(this._frame);
-    },
+    }
 
-    _stopAnimation: function () {
+    private _stopAnimation() {
         if (this._animationId !== null) {
             cancelAnimationFrame(this._animationId);
             this._animationId = null;
         }
-    },
+    }
 
-    _draw: function () {
+    private _draw() {
         this._stopAnimation();
         // Define geographic bounds: 0 to 30N latitude, 20 to 65E longitude
         const southWest = L.latLng(0, 20);
@@ -104,20 +114,6 @@ const LeafletWindGL = L.Layer.extend({
         this._prev_time = performance.now();
         this._delta_time = 0;
         this._facAnim = 0.001 / 120.;
-        // const frame = () => {
-        //     this._windGl.draw(this._delta_time);
-        //     const time = performance.now();
-        //     this._delta_time += (time - this._prev_time) * this._facAnim
-        //     console.log(this._delta_time);
-        //     this._delta_time = this._delta_time % 1.5;
-        //     this._prev_time = time;
-        //     requestAnimationFrame(frame);
-        // }
         this._startAnimation();
     }
-});
-
-export function leafletWindGL(windData: WindData, options?: L.LayerOptions) {
-    // @ts-ignore
-    return new LeafletWindGL(windData, options);
 }
