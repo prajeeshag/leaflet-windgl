@@ -50,7 +50,7 @@ export default defineConfig([
             }),
         ],
         watch: {
-            include: 'src/**',
+            include: ['src/**', 'src/**/*.glsl'],
             clearScreen: true,
         },
     },

@@ -28,8 +28,8 @@ const defaultRampColors = {
 export default class WindGL {
     gl: WebGLRenderingContext
     fadeOpacity = 0.99; // how fast the particle trails fade on each frame
-    speedFactor = 0.9; // how fast the particles move
-    dropRate = 0.001; // how fast the particle will die off
+    speedFactor = 1.5; // how fast the particles move
+    dropRate = 0.009; // how fast the particle will die off
     private _particlesPerPixel: number = 0.03
     private _programs: { [key: string]: any } = {}
     private _quadBuffer: any;

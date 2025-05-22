@@ -37,15 +37,20 @@ void main() {
     vec2 offset = vec2(velocity.x, -velocity.y) * 0.0001 * u_speed_factor;
 
     // update particle position, wrapping around the date line
-    pos = fract(1.0 + pos + offset);
+    // pos = fract(1.0 + pos + offset);
+    pos = pos + offset;
+
+    float drop1 = step(1.0, abs(pos.x));
+    float drop2 = step(1.0, abs(pos.y));
+    drop1 = max(drop1, drop2);
 
     // a random seed to use for the particle drop
     vec2 seed = (pos + v_tex_pos) * u_rand_seed;
-
-    float drop = step(0.0, -age);
+    float drop = step(age, 0.0);
 
     vec2 random_pos = vec2(rand(seed + 1.3), rand(seed + 2.1));
 
+    drop = max(drop, drop1);
     pos = mix(pos, random_pos, drop);
 
     // encode the new particle position back into RGBA
