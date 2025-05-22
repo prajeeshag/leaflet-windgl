@@ -11,17 +11,13 @@ uniform vec2 u_canvas_size;
 uniform float u_time_fac;
 varying vec2 v_tex_pos;
 
-vec2 lookup_wind(const vec2 uv) {
-    // return texture2D(u_wind, uv).rg; // lower-res hardware filtering
-    // vec2 px = uv / u_wind_res;
-    return texture2D(u_wind, uv).rg;
-}
-
-// #include "lookup_wind.glsl"
+#include "includes/lookup_wind.glsl"
 
 void main() {
     vec4 color = texture2D(u_screen, 1. - v_tex_pos);
+
     float wind_speed = length(lookup_wind(1.0 - v_tex_pos));
+
     wind_speed = (wind_speed - u_wind_spd_min) / (u_wind_spd_max - u_wind_spd_min);
     float wind = smoothstep(0.3, 0.7, wind_speed);
 
