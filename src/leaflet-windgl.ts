@@ -4,6 +4,11 @@ import WindGL from './wind/windgl';
 
 const L = globalThis.L as typeof import('leaflet');
 
+type Bound = {
+    tl: { x: number; y: number };
+    br: { x: number; y: number };
+};
+
 export class LeafletWindGL extends L.Layer {
     private _windData: WindData;
     private _canvas!: HTMLCanvasElement;
@@ -96,39 +101,69 @@ export class LeafletWindGL extends L.Layer {
         this._startAnimation();
     }
 
+    private _setCanvasGrid(canvasBound: Bound, gridBound: Bound) {
+        const tlCanvas2L = { x: canvasBound.tl.x, y: canvasBound.tl.y };
+        const brCanvas2L = { x: canvasBound.br.x, y: canvasBound.br.y };
+        const tlGrid2L = { x: gridBound.tl.x, y: gridBound.tl.y };
+        const brGrid2L = { x: gridBound.br.x, y: gridBound.br.y };
+
+        // Calculate the top-left and bottom-right corners of the canvas in grid coordinates
+        const tlCanvas2G = { x: tlCanvas2L.x - tlGrid2L.x, y: tlCanvas2L.y - tlGrid2L.y };
+        const brCanvas2G = { x: brCanvas2L.x - tlGrid2L.x, y: brCanvas2L.y - tlGrid2L.y };
+
+        // Normalize the coordinates to the range [0, 1]
+        const tlCanvas2Gn = {
+            x: tlCanvas2G.x / (brGrid2L.x - tlGrid2L.x),
+            y: tlCanvas2G.y / (brGrid2L.y - tlGrid2L.y),
+        };
+        const brCanvas2Gn = {
+            x: brCanvas2G.x / (brGrid2L.x - tlGrid2L.x),
+            y: brCanvas2G.y / (brGrid2L.y - tlGrid2L.y),
+        };
+        const CanvasSize = {
+            width: Math.abs(brCanvas2Gn.x - tlCanvas2Gn.x),
+            height: Math.abs(brCanvas2Gn.y - tlCanvas2Gn.y),
+        };
+        this._windGl.setCanvasPos(tlCanvas2Gn.x, tlCanvas2Gn.y, CanvasSize.width, CanvasSize.height);
+    }
+
     private _setCanvasBounds() {
         const southWest = L.latLng(0, 20);
         const northEast = L.latLng(30, 65);
         //const bounds = L.latLngBounds(southWest, northEast);
         const bounds = new L.LatLngBounds(southWest, northEast);
 
-        // Convert geographic bounds to layer points (relative to the map's top-left corner)
-        const topLeftL = this._map.latLngToLayerPoint(bounds.getNorthWest());
-        const bottomRightL = this._map.latLngToLayerPoint(bounds.getSouthEast());
-        const topLeftC = this._map.latLngToContainerPoint(bounds.getNorthWest());
-        const bottomRightC = this._map.latLngToContainerPoint(bounds.getSouthEast());
+        // Convert geographic bounds to layer points 
+        // this is also the bound of Wind Grid in pixels
+        const tlWind2L = this._map.latLngToLayerPoint(bounds.getNorthWest());
+        const brWind2L = this._map.latLngToLayerPoint(bounds.getSouthEast());
+
+        const tlWind2C = this._map.latLngToContainerPoint(bounds.getNorthWest());
+        const brWind2C = this._map.latLngToContainerPoint(bounds.getSouthEast());
 
         const containerSize = this._map.getSize();
 
-        const topLeft = { x: topLeftL.x, y: topLeftL.y };
-        const bottomRight = { x: bottomRightL.x, y: bottomRightL.y };
+        // Calculate the top-left and bottom-right corners of the canvas in Layer coordinates
+        const tlCanvas2L = { x: tlWind2L.x, y: tlWind2L.y };
+        const brCanvas2L = { x: brWind2L.x, y: brWind2L.y };
 
-        if (topLeftC.x < 0) {
-            topLeft.x = topLeft.x - topLeftC.x;
+        if (tlWind2C.x < 0) {
+            tlCanvas2L.x = tlCanvas2L.x - tlWind2C.x;
         }
-        if (topLeftC.y < 0) {
-            topLeft.y = topLeft.y - topLeftC.y;
+        if (tlWind2C.y < 0) {
+            tlCanvas2L.y = tlCanvas2L.y - tlWind2C.y;
         }
-        if (bottomRightC.x > containerSize.x) {
-            bottomRight.x = bottomRight.x - (bottomRightC.x - containerSize.x);
+        if (brWind2C.x > containerSize.x) {
+            brCanvas2L.x = brCanvas2L.x - (brWind2C.x - containerSize.x);
         }
-        if (bottomRightC.y > containerSize.y) {
-            bottomRight.y = bottomRight.y - (bottomRightC.y - containerSize.y);
+        if (brWind2C.y > containerSize.y) {
+            brCanvas2L.y = brCanvas2L.y - (brWind2C.y - containerSize.y);
         }
 
         // Calculate rectangle dimensions in pixels
-        const width = Math.max(bottomRight.x - topLeft.x, 0);
-        const height = Math.max(bottomRight.y - topLeft.y, 0);
+        const width = Math.max(brCanvas2L.x - tlCanvas2L.x, 0);
+        const height = Math.max(brCanvas2L.y - tlCanvas2L.y, 0);
+
         this._canvasExists = width * height > 0;
         // Position the canvas correctly using the offset of the overlay pane
         // const pos = L.DomUtil.getPosition(this._map.getPanes().overlayPane);
@@ -141,7 +176,11 @@ export class LeafletWindGL extends L.Layer {
 
         // Position the canvas with respect to the overlay pane
         this._canvas.style.position = 'absolute';
-        this._canvas.style.left = topLeft.x + 'px';
-        this._canvas.style.top = topLeft.y + 'px';
+        this._canvas.style.left = tlCanvas2L.x + 'px';
+        this._canvas.style.top = tlCanvas2L.y + 'px';
+
+        if (this._canvasExists) {
+            this._setCanvasGrid({ tl: tlCanvas2L, br: brCanvas2L }, { tl: tlWind2L, br: brWind2L });
+        }
     }
 }

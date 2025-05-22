@@ -1,6 +1,6 @@
 import { defineConfig } from 'rollup';
 import typescript from '@rollup/plugin-typescript';
-import { string } from 'rollup-plugin-string';
+import { default as glslOptimize } from 'rollup-plugin-glsl-optimize';
 import resolve from '@rollup/plugin-node-resolve';
 
 export default defineConfig([
@@ -12,14 +12,22 @@ export default defineConfig([
             sourcemap: true,
         },
         plugins: [
-            string({ include: 'src/**/*.glsl' }),
+            glslOptimize({
+                include: ['src/**/*.glsl'],
+                optimize: false,
+                sourceMap: true,
+            }),
             resolve(),
             typescript({
                 tsconfig: './tsconfig.json',
                 declaration: true,
-                declarationDir: 'dist/wind/types'
+                declarationDir: 'dist/wind/types',
             }),
-        ]
+        ],
+        watch: {
+            include: 'src/**',
+            clearScreen: true,
+        },
     },
     {
         input: 'src/leaflet-windgl.ts',
@@ -29,13 +37,21 @@ export default defineConfig([
             sourcemap: true,
         },
         plugins: [
-            string({ include: 'src/**/*.glsl' }),
+            glslOptimize({
+                include: ['src/**/*.glsl'],
+                optimize: false,
+                sourceMap: true,
+            }),
             resolve(),
             typescript({
                 tsconfig: './tsconfig.json',
                 declaration: true,
-                declarationDir: 'dist/types'
+                declarationDir: 'dist/types',
             }),
-        ]
-    }
+        ],
+        watch: {
+            include: 'src/**',
+            clearScreen: true,
+        },
+    },
 ]);

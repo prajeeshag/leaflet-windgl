@@ -1,3 +1,4 @@
+#version 100
 precision mediump float;
 
 uniform sampler2D u_screen;
@@ -5,14 +6,18 @@ uniform sampler2D u_wind;
 uniform float u_wind_spd_min;
 uniform float u_wind_spd_max;
 uniform float u_opacity;
-uniform vec2 u_wind_res;
+uniform vec2 u_canvas_origin;
+uniform vec2 u_canvas_size;
+uniform float u_time_fac;
 varying vec2 v_tex_pos;
 
 vec2 lookup_wind(const vec2 uv) {
     // return texture2D(u_wind, uv).rg; // lower-res hardware filtering
-    vec2 px = uv / u_wind_res;
-    return texture2D(u_wind, px).rg;
+    // vec2 px = uv / u_wind_res;
+    return texture2D(u_wind, uv).rg;
 }
+
+// #include "lookup_wind.glsl"
 
 void main() {
     vec4 color = texture2D(u_screen, 1. - v_tex_pos);

@@ -46,8 +46,10 @@ export default class WindGL {
     private _windTextures: WindTexture
     private _windData: WindData;
     private _util: Util;
-    private _time_factor: number = 0.0;
-    private _tex_index: number = 0;
+    private _timeFactor: number = 0.0;
+    private _texIndex: number = 0;
+    private _canvasOrigin: [number, number] = [0, 0]; //[x0,y0] canvas position relative to the wind data grid all normalized to [0,1]
+    private _canvasSize: [number, number] = [0, 0]; //[x0,y0] canvas size relative to the wind data grid all normalized to [0,1]
 
     constructor(gl: WebGLRenderingContext, windData: WindData, particlesPerPixel: number = 0.03) {
         this.gl = gl;
@@ -133,10 +135,15 @@ export default class WindGL {
         this._initScreenTexture();
     }
 
+    setCanvasPos(x0: number, y0: number, width: number, height: number) {
+        this._canvasOrigin = [x0, y0];
+        this._canvasSize = [width, height];
+    }
+
     draw(timeStep: number) {
         var dt = Math.min(Math.max(0.0, Math.min(0.99999, timeStep)) * this._windTextures.ntex, this._windTextures.ntex);
-        this._tex_index = Math.floor(dt);
-        this._time_factor = dt - this._tex_index;
+        this._texIndex = Math.floor(dt);
+        this._timeFactor = dt - this._texIndex;
         const gl = this.gl;
         // console.log(this._tex_index, this._time_factor);
         gl.disable(gl.DEPTH_TEST);
@@ -171,10 +178,14 @@ export default class WindGL {
         const gl = this.gl;
         const program = this._programs.screen;
         gl.useProgram(program.program);
-        const windTex = this._windTextures.textures[this._tex_index];
+        const windTex = this._windTextures.textures[this._texIndex];
+        gl.uniform1f(program.u_time_fac, this._timeFactor);
         gl.uniform1f(program.u_wind_spd_min, this._windTextures.spdMin);
         gl.uniform1f(program.u_wind_spd_max, this._windTextures.spdMax);
         gl.uniform2f(program.u_wind_res, this._windData.width, this._windData.height);
+        gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
+        gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
+
         this._util.bindTexture(program.u_wind, windTex!)
         this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
         this._util.bindTexture(program.u_screen, texture)
@@ -187,7 +198,7 @@ export default class WindGL {
         const gl = this.gl;
         const program = this._programs.draw;
         gl.useProgram(program.program);
-        const windTex = this._windTextures.textures[this._tex_index];
+        const windTex = this._windTextures.textures[this._texIndex];
         this._util.bindAttribute(this._particleIndexBuffer, program.a_index, 1);
 
         this._util.bindTexture(program.u_wind, windTex!)
@@ -209,7 +220,7 @@ export default class WindGL {
         gl.viewport(0, 0, this._particleStateResolution, this._particleStateResolution);
 
         const program = this._programs.update;
-        const windTex = this._windTextures.textures[this._tex_index];
+        const windTex = this._windTextures.textures[this._texIndex];
         if (!windTex) {
             throw new Error('Wind texture not found');
         }
@@ -220,9 +231,11 @@ export default class WindGL {
         this._util.bindTexture(program.u_particles, this._particlePosTexture[0])
         this._util.bindTexture(program.u_particle_props, this._particlePropTexture[0])
 
-        gl.uniform1f(program.u_time_fac, this._time_factor);
+        gl.uniform1f(program.u_time_fac, this._timeFactor);
         gl.uniform1f(program.u_rand_seed, Math.random());
         gl.uniform2f(program.u_wind_res, this._windData.width, this._windData.height);
+        gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
+        gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
         gl.uniform2f(program.u_wind_min, this._windData.uMin, this._windData.vMin);
         gl.uniform2f(program.u_wind_max, this._windData.uMax, this._windData.vMax);
         gl.uniform1f(program.u_speed_factor, this.speedFactor);
@@ -236,7 +249,7 @@ export default class WindGL {
         gl.viewport(0, 0, this._particleStateResolution, this._particleStateResolution);
 
         const program = this._programs.updateProp;
-        const windTex = this._windTextures.textures[this._tex_index];
+        const windTex = this._windTextures.textures[this._texIndex];
         gl.useProgram(program.program);
 
         this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
@@ -244,8 +257,10 @@ export default class WindGL {
         this._util.bindTexture(program.u_wind, windTex!)
         this._util.bindTexture(program.u_particles, this._particlePosTexture[0])
         this._util.bindTexture(program.u_particle_props, this._particlePropTexture[0])
-        gl.uniform1f(program.u_time_fac, this._time_factor);
+        gl.uniform1f(program.u_time_fac, this._timeFactor);
         gl.uniform2f(program.u_wind_res, this._windData.width, this._windData.height);
+        gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
+        gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
         gl.uniform2f(program.u_wind_min, this._windData.uMin, this._windData.vMin);
         gl.uniform2f(program.u_wind_max, this._windData.uMax, this._windData.vMax);
         gl.uniform1f(program.u_wind_speed_min, this._windData.uMin);
