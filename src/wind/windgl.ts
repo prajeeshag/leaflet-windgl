@@ -12,14 +12,12 @@ import updateFrag from './shaders/update.frag.glsl';
 import updatePropFrag from './shaders/updateProp.frag.glsl'
 
 const defaultRampColors = {
-    0.0: '#3288bd',
-    0.1: '#66c2a5',
-    0.2: '#abdda4',
-    0.3: '#e6f598',
-    0.4: '#fee08b',
-    0.5: '#fdae61',
-    0.6: '#f46d43',
-    1.0: '#d53e4f'
+    0.0: 'rgba(250, 250, 250, 0.0)',
+    0.2: 'rgba(250, 250, 250, 0.8)',
+    // 0.4: 'rgba(250, 250, 250, 0.6)',
+    // 0.6: 'rgba(250, 250, 250, 0.78)',
+    // 0.8: 'rgba(250, 250, 250, 0.88)',
+    1.0: 'rgba(250, 250, 250, 0.9999)',
 };
 
 // const defaultRampColors = {
@@ -32,7 +30,7 @@ export default class WindGL {
     fadeOpacity = 0.99; // how fast the particle trails fade on each frame
     speedFactor = 0.9; // how fast the particles move
     dropRate = 0.001; // how fast the particle will die off
-    particlesPerPixel: number = 0.03
+    private _particlesPerPixel: number = 0.03
     private _programs: { [key: string]: any } = {}
     private _quadBuffer: any;
     private _framebuffer!: WebGLFramebuffer;
@@ -51,9 +49,8 @@ export default class WindGL {
     private _canvasOrigin: [number, number] = [0, 0]; //[x0,y0] canvas position relative to the wind data grid all normalized to [0,1]
     private _canvasSize: [number, number] = [0, 0]; //[x0,y0] canvas size relative to the wind data grid all normalized to [0,1]
 
-    constructor(gl: WebGLRenderingContext, windData: WindData, particlesPerPixel: number = 0.03) {
+    constructor(gl: WebGLRenderingContext, windData: WindData) {
         this.gl = gl;
-        this.particlesPerPixel = particlesPerPixel;
         this._util = new Util(gl);
         this._programs['draw'] = this._util.createProgram(drawVert, drawFrag);
         this._programs['screen'] = this._util.createProgram(quadVert, screenFrag);
@@ -70,8 +67,18 @@ export default class WindGL {
         this.reset();
     }
 
+    set particlesPerPixel(value: number) {
+        value = Math.max(0.0, Math.min(1.0, value));
+        this._particlesPerPixel = value;
+        this.reset();
+    }
+
+    get particlesPerPixel(): number {
+        return this._particlesPerPixel;
+    }
+
     private _initParticles() {
-        const particlesPerPixel = this.particlesPerPixel;
+        const particlesPerPixel = this._particlesPerPixel;
         const gl = this.gl;
         const numParticles = Math.floor(particlesPerPixel * gl.canvas.width * gl.canvas.height);
         const particleRes = this._particleStateResolution = Math.floor(Math.sqrt(numParticles));
@@ -294,7 +301,6 @@ function getColorRamp(colors: { [x: string]: string; }) {
 
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 256, 1);
-
     return new Uint8Array(ctx.getImageData(0, 0, 256, 1).data);
 }
 

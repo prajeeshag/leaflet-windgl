@@ -5,12 +5,12 @@ import { WindData, LeafletWindGL } from "/dist/leaflet-windgl.js";
 
 // Create map and test plugin
 const map = L.map("map", {
-    // maxBounds: [[0, 20], [30, 65]]
-}).setView([10, 47], 6);
+    maxBounds: [[0, 20], [30, 65]]
+}).setView([10, 47], 5);
 
 // Set map background to black
 map.getContainer().style.background = "black";
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+// L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
 // get the canvas element
 // const canvas = document.getElementById("map")
@@ -37,7 +37,6 @@ const vArr = await zarr.get(store)
 var store = await _openZarr('U10')
 const uAttr = store.attrs
 const uArr = await zarr.get(store)
-console.log(uArr);
 
 const uData = uArr.data
 const vData = vArr.data

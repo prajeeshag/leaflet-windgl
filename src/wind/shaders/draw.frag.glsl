@@ -23,5 +23,5 @@ void main() {
     vec2 ramp_pos = vec2(fract(16.0 * speed_t), floor(16.0 * speed_t) / 16.0);
 
     vec4 color = texture2D(u_color_ramp, ramp_pos);
-    gl_FragColor = vec4(color.rgb, 0.9);
+    gl_FragColor = vec4(color);
 }
