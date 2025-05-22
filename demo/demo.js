@@ -5,7 +5,7 @@ import { WindData, LeafletWindGL } from "/dist/leaflet-windgl.js";
 
 // Create map and test plugin
 const map = L.map("map", {
-    maxBounds: [[0, 20], [30, 65]]
+    // maxBounds: [[0, 20], [30, 65]]
 }).setView([10, 47], 4);
 
 // Set map background to black

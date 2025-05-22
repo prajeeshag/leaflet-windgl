@@ -13,6 +13,7 @@ export class LeafletWindGL extends L.Layer {
     private _prev_time!: number;
     private _delta_time: number = 0;
     private _facAnim: number = 0.001 / 120.;
+    private _canvasExists: boolean = false;
 
     constructor(windData: WindData, options?: L.LayerOptions) {
         super(options);
@@ -62,7 +63,6 @@ export class LeafletWindGL extends L.Layer {
         this._windGl.draw(this._delta_time);
         const time = performance.now();
         this._delta_time += (time - this._prev_time) * this._facAnim;
-        console.log(this._delta_time);
         this._delta_time = this._delta_time % 1.5;
         this._prev_time = time;
         this._animationId = requestAnimationFrame(this._frame);
@@ -71,6 +71,9 @@ export class LeafletWindGL extends L.Layer {
     private _startAnimation() {
         if (this._animationId !== null) {
             cancelAnimationFrame(this._animationId);
+        }
+        if (!this._canvasExists) {
+            return;
         }
         this._animationId = requestAnimationFrame(this._frame);
     }
@@ -85,20 +88,50 @@ export class LeafletWindGL extends L.Layer {
     private _draw() {
         this._stopAnimation();
         // Define geographic bounds: 0 to 30N latitude, 20 to 65E longitude
+        this._setCanvasBounds();
+        this._windGl.reset();
+        this._prev_time = performance.now();
+        this._delta_time = 0;
+        this._facAnim = 0.001 / 120.;
+        this._startAnimation();
+    }
+
+    private _setCanvasBounds() {
         const southWest = L.latLng(0, 20);
         const northEast = L.latLng(30, 65);
-        const bounds = L.latLngBounds(southWest, northEast);
+        //const bounds = L.latLngBounds(southWest, northEast);
+        const bounds = new L.LatLngBounds(southWest, northEast);
 
         // Convert geographic bounds to layer points (relative to the map's top-left corner)
-        const topLeft = this._map.latLngToLayerPoint(bounds.getNorthWest());
-        const bottomRight = this._map.latLngToLayerPoint(bounds.getSouthEast());
+        const topLeftL = this._map.latLngToLayerPoint(bounds.getNorthWest());
+        const bottomRightL = this._map.latLngToLayerPoint(bounds.getSouthEast());
+        const topLeftC = this._map.latLngToContainerPoint(bounds.getNorthWest());
+        const bottomRightC = this._map.latLngToContainerPoint(bounds.getSouthEast());
+
+        const containerSize = this._map.getSize();
+
+        const topLeft = { x: topLeftL.x, y: topLeftL.y };
+        const bottomRight = { x: bottomRightL.x, y: bottomRightL.y };
+
+        if (topLeftC.x < 0) {
+            topLeft.x = topLeft.x - topLeftC.x;
+        }
+        if (topLeftC.y < 0) {
+            topLeft.y = topLeft.y - topLeftC.y;
+        }
+        if (bottomRightC.x > containerSize.x) {
+            bottomRight.x = bottomRight.x - (bottomRightC.x - containerSize.x);
+        }
+        if (bottomRightC.y > containerSize.y) {
+            bottomRight.y = bottomRight.y - (bottomRightC.y - containerSize.y);
+        }
 
         // Calculate rectangle dimensions in pixels
-        const width = bottomRight.x - topLeft.x;
-        const height = bottomRight.y - topLeft.y;
-
+        const width = Math.max(bottomRight.x - topLeft.x, 0);
+        const height = Math.max(bottomRight.y - topLeft.y, 0);
+        this._canvasExists = width * height > 0;
         // Position the canvas correctly using the offset of the overlay pane
-        const pos = L.DomUtil.getPosition(this._map.getPanes().overlayPane);
+        // const pos = L.DomUtil.getPosition(this._map.getPanes().overlayPane);
 
         // Set the canvas dimensions and position
         this._canvas.width = width;
@@ -108,12 +141,7 @@ export class LeafletWindGL extends L.Layer {
 
         // Position the canvas with respect to the overlay pane
         this._canvas.style.position = 'absolute';
-        this._canvas.style.left = (topLeft.x + pos.x) + 'px';
-        this._canvas.style.top = (topLeft.y + pos.y) + 'px';
-        this._windGl.reset();
-        this._prev_time = performance.now();
-        this._delta_time = 0;
-        this._facAnim = 0.001 / 120.;
-        this._startAnimation();
+        this._canvas.style.left = topLeft.x + 'px';
+        this._canvas.style.top = topLeft.y + 'px';
     }
 }

@@ -134,7 +134,7 @@ export default class WindGL {
     }
 
     draw(timeStep: number) {
-        var dt = Math.max(0.0, Math.min(1.0, timeStep)) * this._windTextures.ntex;
+        var dt = Math.min(Math.max(0.0, Math.min(0.99999, timeStep)) * this._windTextures.ntex, this._windTextures.ntex);
         this._tex_index = Math.floor(dt);
         this._time_factor = dt - this._tex_index;
         const gl = this.gl;
