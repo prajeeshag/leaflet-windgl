@@ -38,6 +38,18 @@ var store = await _openZarr('U10')
 const uAttr = store.attrs
 const uArr = await zarr.get(store)
 
+// create a const wind field of type uint18array
+// const tempData = new Uint8Array(uArr.shape[0] * uArr.shape[1] * uArr.shape[2]).fill(254);
+// const windData = new WindData(
+//     tempData,
+//     tempData,
+//     [0, 0],
+//     [0, 10],
+//     uArr.shape[2],
+//     uArr.shape[1],
+//     uArr.shape[0],
+// );
+
 const uData = uArr.data
 const vData = vArr.data
 const windData = new WindData(

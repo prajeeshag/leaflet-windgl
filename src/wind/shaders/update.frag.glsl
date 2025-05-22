@@ -40,8 +40,8 @@ void main() {
     // pos = fract(1.0 + pos + offset);
     pos = pos + offset;
 
-    float drop1 = step(1.0, abs(pos.x));
-    float drop2 = step(1.0, abs(pos.y));
+    float drop1 = step(1.0, abs(1. - 2. * pos.x));
+    float drop2 = step(1.0, abs(1. - 2. * pos.y));
     drop1 = max(drop1, drop2);
 
     // a random seed to use for the particle drop

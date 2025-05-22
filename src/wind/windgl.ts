@@ -12,12 +12,14 @@ import updateFrag from './shaders/update.frag.glsl';
 import updatePropFrag from './shaders/updateProp.frag.glsl'
 
 const defaultRampColors = {
-    0.0: 'rgba(250, 250, 250, 0.0)',
-    0.2: 'rgba(250, 250, 250, 0.8)',
-    // 0.4: 'rgba(250, 250, 250, 0.6)',
-    // 0.6: 'rgba(250, 250, 250, 0.78)',
-    // 0.8: 'rgba(250, 250, 250, 0.88)',
-    1.0: 'rgba(250, 250, 250, 0.9999)',
+    0.0: 'rgba(44,123,182,0.5)',    // blue
+    0.1: 'rgba(0,166,202,0.7)',     // cyan
+    0.2: 'rgba(0,204,188,0.8)',     // teal
+    0.3: 'rgba(144,235,157,0.8)',   // light green
+    0.5: 'rgba(255,255,140,0.9)',   // yellow
+    0.7: 'rgba(249,208,87,1)',    // orange
+    0.8: 'rgba(242,158,46,1)',    // orange-brown
+    1.0: 'rgba(215,25,28,1)',     // red
 };
 
 // const defaultRampColors = {
@@ -30,6 +32,8 @@ export default class WindGL {
     fadeOpacity = 0.99; // how fast the particle trails fade on each frame
     speedFactor = 1.5; // how fast the particles move
     dropRate = 0.009; // how fast the particle will die off
+    minSpeedColor = 1.0; // minimum color velocity
+    maxSpeedColor = 15.0; // maximum color velocity
     private _particlesPerPixel: number = 0.03
     private _programs: { [key: string]: any } = {}
     private _quadBuffer: any;
@@ -187,8 +191,6 @@ export default class WindGL {
         gl.useProgram(program.program);
         const windTex = this._windTextures.textures[this._texIndex];
         gl.uniform1f(program.u_time_fac, this._timeFactor);
-        gl.uniform1f(program.u_wind_spd_min, this._windTextures.spdMin);
-        gl.uniform1f(program.u_wind_spd_max, this._windTextures.spdMax);
         gl.uniform2f(program.u_wind_res, this._windData.width, this._windData.height);
         gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
         gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
@@ -219,9 +221,10 @@ export default class WindGL {
         gl.uniform1f(program.u_particles_res, this._particleStateResolution);
         gl.uniform2f(program.u_wind_min, this._windData.uMin, this._windData.vMin);
         gl.uniform2f(program.u_wind_max, this._windData.uMax, this._windData.vMax);
+        gl.uniform1f(program.u_wind_spd_min, this.minSpeedColor);
+        gl.uniform1f(program.u_wind_spd_max, this.maxSpeedColor);
 
         gl.drawArrays(gl.POINTS, 0, this._numParticles);
-        // gl.drawArrays(gl.LINES)
     }
 
     private _updateParticles() {
@@ -351,8 +354,6 @@ class WindTexture {
     height: number;
     width: number;
     ntex: number;
-    spdMin: number;
-    spdMax: number;
     constructor(windData: WindData, gl: WebGLRenderingContext) {
         const uwind = windData.uwind;
         const vwind = windData.vwind;
@@ -369,57 +370,31 @@ class WindTexture {
         }
 
         const util = new Util(gl);
-        var spdMin = Infinity;
-        var spdMax = -Infinity;
-
         const wh = this.width * this.height;
-        if (windData.ntime === 1) {
-            const uwind1 = uwind.subarray(0, wh);
-            const vwind1 = vwind.subarray(0, wh);
+        for (let t = 0; t < this.ntex; t++) {
+            const t1 = t
+            var t2 = t + 1;
+            if (this.ntex === 1) {
+                t2 = t;
+            }
+            const uwind1 = uwind.subarray(t1 * wh, (t1 + 1) * wh);
+            const vwind1 = vwind.subarray(t1 * wh, (t1 + 1) * wh);
+            const uwind2 = uwind.subarray(t2 * wh, (t2 + 1) * wh);
+            const vwind2 = vwind.subarray(t2 * wh, (t2 + 1) * wh);
             const windArray = new Uint8Array(wh * 4);
-
             for (let i = 0; i < wh; i++) {
-                const u = uwind1[i] ?? 0;
-                const v = vwind1[i] ?? 0;
-                windArray[i * 4] = u
-                windArray[i * 4 + 1] = v
-                windArray[i * 4 + 2] = u
-                windArray[i * 4 + 3] = v
-                const spd = Math.sqrt(u * u + v * v);
-                spdMin = Math.min(spdMin, spd);
-                spdMax = Math.max(spdMax, spd);
+                const u1 = uwind1[i] ?? 0;
+                const v1 = vwind1[i] ?? 0;
+                const u2 = uwind2[i] ?? 0;
+                const v2 = vwind2[i] ?? 0;
+                windArray[i * 4] = u1
+                windArray[i * 4 + 1] = v1;
+                windArray[i * 4 + 2] = u2;
+                windArray[i * 4 + 3] = v2;
             }
             const texture = util.createTexture(gl.LINEAR, windArray, windData.width, windData.height);
             this.textures.push(texture);
-        } else {
-            for (let t = 0; t < this.ntex; t++) {
-                const t1 = t
-                const t2 = t + 1;
-                const uwind1 = uwind.subarray(t1 * wh, (t1 + 1) * wh);
-                const vwind1 = vwind.subarray(t1 * wh, (t1 + 1) * wh);
-                const uwind2 = uwind.subarray(t2 * wh, (t2 + 1) * wh);
-                const vwind2 = vwind.subarray(t2 * wh, (t2 + 1) * wh);
-                const windArray = new Uint8Array(wh * 4);
-                for (let i = 0; i < wh; i++) {
-                    const u1 = uwind1[i] ?? 0;
-                    const v1 = vwind1[i] ?? 0;
-                    const u2 = uwind2[i] ?? 0;
-                    const v2 = vwind2[i] ?? 0;
-                    windArray[i * 4] = u1
-                    windArray[i * 4 + 1] = v1;
-                    windArray[i * 4 + 2] = u2;
-                    windArray[i * 4 + 3] = v2;
-                    const spd1 = Math.sqrt(u1 * u1 + v1 * v1);
-                    const spd2 = Math.sqrt(u2 * u2 + v2 * v2);
-                    spdMin = Math.min(spdMin, spd1, spd2);
-                    spdMax = Math.max(spdMax, spd1, spd2);
-                }
-                const texture = util.createTexture(gl.LINEAR, windArray, windData.width, windData.height);
-                this.textures.push(texture);
-            }
         }
-        this.spdMin = spdMin;
-        this.spdMax = spdMax;
     }
 }
 
