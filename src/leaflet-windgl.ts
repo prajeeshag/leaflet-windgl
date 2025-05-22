@@ -8,6 +8,8 @@ const LeafletWindGL = L.Layer.extend({
     initialize: function (windData: WindData, options?: L.LayerOptions) {
         L.setOptions(this, options);
         this._windData = windData;
+        this._frame = this._frame.bind(this)
+        this._animationId = null;
     },
 
     onAdd: function (map: L.Map) {
@@ -46,7 +48,32 @@ const LeafletWindGL = L.Layer.extend({
         this._draw();
     },
 
+    _frame: function () {
+        this._windGl.draw(this._delta_time);
+        const time = performance.now();
+        this._delta_time += (time - this._prev_time) * this._facAnim
+        console.log(this._delta_time);
+        this._delta_time = this._delta_time % 1.5;
+        this._prev_time = time;
+        this._animationId = requestAnimationFrame(this._frame);
+    },
+
+    _startAnimation: function () {
+        if (this._animationId !== null) {
+            cancelAnimationFrame(this._animationId);
+        }
+        this._animationId = requestAnimationFrame(this._frame);
+    },
+
+    _stopAnimation: function () {
+        if (this._animationId !== null) {
+            cancelAnimationFrame(this._animationId);
+            this._animationId = null;
+        }
+    },
+
     _draw: function () {
+        this._stopAnimation();
         // Define geographic bounds: 0 to 30N latitude, 20 to 65E longitude
         const southWest = L.latLng(0, 20);
         const northEast = L.latLng(30, 65);
@@ -74,19 +101,19 @@ const LeafletWindGL = L.Layer.extend({
         this._canvas.style.left = (topLeft.x + pos.x) + 'px';
         this._canvas.style.top = (topLeft.y + pos.y) + 'px';
         this._windGl.reset();
-        var prev_time = performance.now();
-        var delta_time = 0;
-        const animationTime = 120
-        const facAnim = 0.001 / animationTime;
-        const frame = () => {
-            this._windGl.draw(delta_time);
-            const time = performance.now();
-            delta_time += (time - prev_time) * facAnim
-            delta_time = delta_time % 1.5;
-            prev_time = time;
-            requestAnimationFrame(frame);
-        }
-        requestAnimationFrame(frame);
+        this._prev_time = performance.now();
+        this._delta_time = 0;
+        this._facAnim = 0.001 / 120.;
+        // const frame = () => {
+        //     this._windGl.draw(this._delta_time);
+        //     const time = performance.now();
+        //     this._delta_time += (time - this._prev_time) * this._facAnim
+        //     console.log(this._delta_time);
+        //     this._delta_time = this._delta_time % 1.5;
+        //     this._prev_time = time;
+        //     requestAnimationFrame(frame);
+        // }
+        this._startAnimation();
     }
 });
 
