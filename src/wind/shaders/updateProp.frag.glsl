@@ -14,7 +14,7 @@ uniform sampler2D u_particles;
 
 varying vec2 v_tex_pos;
 
-#include "lookup_wind.glsl"
+#include "includes/lookup_wind.glsl"
 
 void main() {
     vec4 color = texture2D(u_particles, v_tex_pos);

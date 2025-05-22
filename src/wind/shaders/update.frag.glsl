@@ -21,7 +21,7 @@ float rand(const vec2 co) {
     return fract(sin(t) * (rand_constants.z + t));
 }
 
-#include "lookup_wind.glsl"
+#include "includes/lookup_wind.glsl"
 
 void main() {
     vec4 color = texture2D(u_particles, v_tex_pos);

@@ -128,18 +128,16 @@ export class LeafletWindGL extends L.Layer {
     }
 
     private _setCanvasBounds() {
-        const southWest = L.latLng(0, 20);
-        const northEast = L.latLng(30, 65);
-        //const bounds = L.latLngBounds(southWest, northEast);
-        const bounds = new L.LatLngBounds(southWest, northEast);
+        const northWest = L.latLng(30, 20);
+        const southEast = L.latLng(0, 65);
 
         // Convert geographic bounds to layer points 
         // this is also the bound of Wind Grid in pixels
-        const tlWind2L = this._map.latLngToLayerPoint(bounds.getNorthWest());
-        const brWind2L = this._map.latLngToLayerPoint(bounds.getSouthEast());
+        const tlWind2L = this._map.latLngToLayerPoint(northWest);
+        const brWind2L = this._map.latLngToLayerPoint(southEast);
 
-        const tlWind2C = this._map.latLngToContainerPoint(bounds.getNorthWest());
-        const brWind2C = this._map.latLngToContainerPoint(bounds.getSouthEast());
+        const tlWind2C = this._map.latLngToContainerPoint(northWest);
+        const brWind2C = this._map.latLngToContainerPoint(southEast);
 
         const containerSize = this._map.getSize();
 

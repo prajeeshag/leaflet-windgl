@@ -2,6 +2,8 @@
 precision mediump float;
 
 uniform sampler2D u_wind;
+uniform vec2 u_canvas_origin;
+uniform vec2 u_canvas_size;
 uniform vec2 u_wind_min;
 uniform vec2 u_wind_max;
 uniform sampler2D u_color_ramp;
@@ -10,9 +12,10 @@ uniform float u_time_fac;
 varying vec2 v_particle_pos;
 varying float v_particle_age;
 
+#include "includes/lookup_wind.glsl"
+
 void main() {
-    vec4 wind01 = texture2D(u_wind, v_particle_pos);
-    vec2 wind = mix(wind01.rg, wind01.ba, u_time_fac);
+    vec2 wind = lookup_wind(v_particle_pos);
     vec2 velocity = mix(u_wind_min, u_wind_max, wind);
     float speed_t = length(velocity) / length(u_wind_max);
 

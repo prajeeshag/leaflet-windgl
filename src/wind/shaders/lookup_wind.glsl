@@ -1,1 +1,0 @@
-#include "lookup_wind_simple.glsl"
