@@ -10,7 +10,7 @@ const map = L.map("map", {
 
 // Set map background to black
 map.getContainer().style.background = "black";
-// L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
 // get the canvas element
 // const canvas = document.getElementById("map")

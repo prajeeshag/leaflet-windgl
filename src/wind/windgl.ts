@@ -202,6 +202,7 @@ export default class WindGL {
         this._util.bindAttribute(this._particleIndexBuffer, program.a_index, 1);
 
         this._util.bindTexture(program.u_wind, windTex!)
+        gl.uniform1f(program.u_time_fac, this._timeFactor);
         this._util.bindTexture(program.u_particles, this._particlePosTexture[0])
         this._util.bindTexture(program.u_particle_props, this._particlePropTexture[0])
         this._util.bindTexture(program.u_color_ramp, this._colorRampTexture)
