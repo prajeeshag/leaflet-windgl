@@ -23,6 +23,6 @@
     "typescript": "^5"
   },
   "scripts": {
-    "deploy-demo": "cp -rf dist demo && gh-pages -d demo"
+    "deploy-demo": "gh-pages -d demo"
   }
 }
