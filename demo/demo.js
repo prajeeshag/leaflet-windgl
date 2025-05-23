@@ -2,8 +2,8 @@ import * as zarr from "https://cdn.jsdelivr.net/npm/zarrita/+esm";
 import { WindData, LeafletWindGL } from "./leaflet-windgl.js";
 import { TimeSlider } from "./leaflet-timeslider.js";
 
-const baseUrl = `${window.location.origin}`;
-const baseDataUrl = `${window.location.origin}/data.zarr/`;
+const baseUrl = `${window.location}`;
+const baseDataUrl = `${baseUrl}/data.zarr/`;
 const _openZarr = (url) => {
     return zarr.open.v3(new zarr.FetchStore(baseDataUrl + url), { kind: "array" })
 };
