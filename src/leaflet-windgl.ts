@@ -163,8 +163,6 @@ export class LeafletWindGL extends L.Layer {
         const height = Math.max(brCanvas2L.y - tlCanvas2L.y, 0);
 
         this._canvasExists = width * height > 0;
-        // Position the canvas correctly using the offset of the overlay pane
-        // const pos = L.DomUtil.getPosition(this._map.getPanes().overlayPane);
 
         // Set the canvas dimensions and position
         this._canvas.width = width;
