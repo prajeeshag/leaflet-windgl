@@ -1,6 +1,6 @@
 import * as zarr from "https://cdn.jsdelivr.net/npm/zarrita/+esm";
-import { WindData, LeafletWindGL } from "/dist/leaflet-windgl.js";
-import { TimeSlider } from "/dist/leaflet-timeslider.js";
+import { WindData, LeafletWindGL } from "leaflet-windgl.js";
+import { TimeSlider } from "leaflet-timeslider.js";
 
 const baseUrl = `${window.location.origin}`;
 const baseDataUrl = `${window.location.origin}/data.zarr/`;
