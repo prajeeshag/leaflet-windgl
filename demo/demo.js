@@ -2,9 +2,10 @@ import * as zarr from "https://cdn.jsdelivr.net/npm/zarrita/+esm";
 import { WindData, LeafletWindGL } from "/dist/leaflet-windgl.js";
 import { TimeSlider } from "/dist/leaflet-timeslider.js";
 
-const baseUrl = `${window.location.origin}/data.zarr/`;
+const baseUrl = `${window.location.origin}`;
+const baseDataUrl = `${window.location.origin}/data.zarr/`;
 const _openZarr = (url) => {
-    return zarr.open.v3(new zarr.FetchStore(baseUrl + url), { kind: "array" })
+    return zarr.open.v3(new zarr.FetchStore(baseDataUrl + url), { kind: "array" })
 };
 
 var store = await _openZarr('10v')
@@ -23,25 +24,35 @@ const lonE = await zarr.get(store, [shape[2] - 1])
 var store = await _openZarr('lat')
 const latN = await zarr.get(store, [0])
 const latS = await zarr.get(store, [shape[1] - 1])
-console.log({ lonE, lonW, latN, latS });
 
 const lat0 = (latN + latS) * 0.5;
 const lon0 = (lonE + lonW) * 0.5;
-console.log({ lat0, lon0 });
-
 
 const uData = uArr.data
 const vData = vArr.data
 
 const map = L.map("map", {
+    crs: L.CRS.EPSG4326,
     maxBounds: [[latS, lonW], [latN, lonE]]
-}).setView([lon0, lon0], 4);
-
-
-
+}).setView([lat0, lon0], 4);
 
 // // Set map background to black
 map.getContainer().style.background = "black";
+
+
+fetch(`${baseUrl}/countryMap.geojson`)
+    .then(res => res.json())
+    .then(geojson => {
+        const borderLayer = L.geoJSON(geojson, {
+            style: {
+                color: 'white',
+                weight: 1,
+                fill: false
+            }
+        })
+        borderLayer.addTo(map)
+    })
+
 
 // // L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
