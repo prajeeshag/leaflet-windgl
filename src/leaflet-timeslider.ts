@@ -14,8 +14,11 @@ export class TimeSlider extends L.Control {
     private _thumb!: HTMLElement;
     private _ticks: string[];
     private _currentIndex: number;
-    private _onChange?: (index: number) => void;
+    private _onChange?: (value: number) => void; // Normalized value
     private _tickLabelColor: string;
+    private _playButton!: HTMLElement;
+    private _isPlaying: boolean = false;
+    private _playIntervalId?: number;
 
     constructor(options: TimeSliderOptions) {
         super(options);
@@ -30,6 +33,7 @@ export class TimeSlider extends L.Control {
         this._container.style.position = 'relative';
         this._container.style.padding = '20px 10px 10px 10px';
         this._container.style.userSelect = 'none';
+
         const updateContainerWidth = () => {
             const mapContainer = map.getContainer();
             const mapWidth = mapContainer.offsetWidth;
@@ -40,7 +44,6 @@ export class TimeSlider extends L.Control {
                 widthPercentage = 0.65; // For medium screens
             }
             const containerWidth = mapWidth * widthPercentage;
-            console.log(`Container width: ${containerWidth}px`);
             this._container.style.width = `${containerWidth}px`;
             this._container.style.left = `${(mapWidth - containerWidth) / 2}px`;
         };
@@ -51,18 +54,35 @@ export class TimeSlider extends L.Control {
         // Update width on map resize
         map.on('resize', updateContainerWidth);
 
+        // Play button
+        this._playButton = L.DomUtil.create('button', 'lts-play-button', this._container);
+        this._playButton.innerText = '▶'; // Play icon
+        this._playButton.style.position = 'absolute';
+        this._playButton.style.left = '10px';
+        this._playButton.style.top = '50%';
+        this._playButton.style.transform = 'translateY(-50%)';
+        this._playButton.style.width = '30px';
+        this._playButton.style.height = '30px';
+        this._playButton.style.border = 'none';
+        this._playButton.style.borderRadius = '50%';
+        this._playButton.style.background = '#1976d2';
+        this._playButton.style.color = '#fff';
+        this._playButton.style.cursor = 'pointer';
+        this._playButton.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+        this._playButton.addEventListener('click', this._togglePlay.bind(this));
+
         // Slider line
         this._slider = L.DomUtil.create('div', 'lts-slider', this._container);
         this._slider.style.position = 'relative';
         this._slider.style.height = '4px';
         this._slider.style.background = '#ccc';
-        this._slider.style.margin = '20px 10px 10px 10px';
+        this._slider.style.margin = '20px 10px 10px 50px'; // Adjust margin to account for play button
         this._slider.style.borderRadius = '2px';
 
         // Tick marks and labels
         const ticksContainer = L.DomUtil.create('div', 'lts-ticks', this._container);
         ticksContainer.style.position = 'absolute';
-        ticksContainer.style.left = '20px';
+        ticksContainer.style.left = '50px'; // Adjust for play button
         ticksContainer.style.right = '20px';
         ticksContainer.style.top = '0';
         ticksContainer.style.height = '30px';
@@ -121,12 +141,9 @@ export class TimeSlider extends L.Control {
             if (!dragging) return;
             const x = e.clientX - sliderRect.left;
             const percent = Math.max(0, Math.min(1, x / sliderRect.width));
-            const idx = Math.round(percent * (this._ticks.length - 1));
-            if (idx !== this._currentIndex) {
-                this._currentIndex = idx;
-                this._updateThumbPosition();
-                this._onChange?.(this._currentIndex);
-            }
+            this._currentIndex = percent * (this._ticks.length - 1);
+            this._updateThumbPosition();
+            this._onChange?.(percent);
         };
 
         const onPointerUp = () => {
@@ -142,12 +159,9 @@ export class TimeSlider extends L.Control {
             sliderRect = this._slider.getBoundingClientRect();
             const x = e.clientX - sliderRect.left;
             const percent = Math.max(0, Math.min(1, x / sliderRect.width));
-            const idx = Math.round(percent * (this._ticks.length - 1));
-            if (idx !== this._currentIndex) {
-                this._currentIndex = idx;
-                this._updateThumbPosition();
-                this._onChange?.(this._currentIndex);
-            }
+            this._currentIndex = percent * (this._ticks.length - 1);
+            this._updateThumbPosition();
+            this._onChange?.(percent);
         });
 
         // Prevent map dragging when interacting with slider
@@ -162,11 +176,46 @@ export class TimeSlider extends L.Control {
         this._thumb.style.left = `calc(${percent * 100}% - 10px)`;
     }
 
+    private _togglePlay() {
+        if (this._isPlaying) {
+            this._stopPlaying();
+        } else {
+            this._startPlaying();
+        }
+    }
+
+    private _startPlaying() {
+        this._isPlaying = true;
+        this._playButton.innerText = '⏸'; // Pause icon
+        const step = 0.01; // Smooth step increment
+        const interval = 50; // Interval in ms
+        this._playIntervalId = window.setInterval(() => {
+            const percent = this._currentIndex / (this._ticks.length - 1);
+            const nextPercent = percent + step;
+            if (nextPercent >= 1) {
+                this._stopPlaying();
+                return;
+            }
+            this._currentIndex = nextPercent * (this._ticks.length - 1);
+            this._updateThumbPosition();
+            this._onChange?.(nextPercent);
+        }, interval);
+    }
+
+    private _stopPlaying() {
+        this._isPlaying = false;
+        this._playButton.innerText = '▶'; // Play icon
+        if (this._playIntervalId) {
+            clearInterval(this._playIntervalId);
+            this._playIntervalId = undefined;
+        }
+    }
+
     setIndex(idx: number) {
         if (idx < 0 || idx >= this._ticks.length) return;
         this._currentIndex = idx;
         this._updateThumbPosition();
-        this._onChange?.(this._currentIndex);
+        this._onChange?.(this._currentIndex / (this._ticks.length - 1));
     }
 
     getIndex() {
