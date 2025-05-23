@@ -5,7 +5,8 @@ export interface TimeSliderOptions extends L.ControlOptions {
     ticks: string[];
     initialPos?: number;
     tickLabelColor?: string; // New property for tick label color
-    onChange?: (index: number) => void;
+    onChange?: (value: number) => void;
+    playDuration?: number; // Duration of the play in seconds
 }
 
 export class TimeSlider extends L.Control {
@@ -14,18 +15,19 @@ export class TimeSlider extends L.Control {
     private _thumb!: HTMLElement;
     private _ticks: string[];
     private _thumbPos: number;
-    private _onChange?: (value: number) => void; // Normalized value
+    private _onChange: (value: number) => void; // Normalized value
     private _tickLabelColor: string;
     private _playButton!: HTMLElement;
     private _animationId: number | null = null;
-    private _animationDuration: number = 120; // Total duration of the animation in seconds
+    private _playDuration: number; // Total duration of the play in seconds
 
     constructor(options: TimeSliderOptions) {
         super(options);
         this._ticks = options.ticks;
         this._thumbPos = options.initialPos ?? 0;
-        this._onChange = options.onChange;
+        this._onChange = options.onChange ?? (() => { });
         this._tickLabelColor = options.tickLabelColor ?? '#000'; // Default to black
+        this._playDuration = options.playDuration ?? 60; // Default to 60 seconds
     }
 
     onAdd(map: L.Map) {
@@ -202,7 +204,7 @@ export class TimeSlider extends L.Control {
         const animate = () => {
             const timestamp = performance.now();
             const currPos = this.getThumbPos();
-            const delta = (timestamp - lastTimestamp) / (1000. * this._animationDuration);
+            const delta = (timestamp - lastTimestamp) / (1000. * this._playDuration);
             const nextPos = Math.min(currPos + delta, 1.0);
             this.setThumbPos(nextPos);
             this._animationId = requestAnimationFrame(animate);
@@ -227,18 +229,10 @@ export class TimeSlider extends L.Control {
     setThumbPos(pos: number) {
         this._thumbPos = Math.max(0, Math.min(pos, 1.0));
         this._updateThumbPosition();
-        this._onChange?.(this._thumbPos);
+        this._onChange(this._thumbPos);
     }
 
     getThumbPos() {
         return this._thumbPos;
     }
 }
-
-// Usage example (in your main code):
-// const slider = new TimeSlider({
-//   position: 'bottomleft',
-//   ticks: ['00:00', '06:00', '12:00', '18:00', '24:00'],
-//   onChange: idx => { console.log('Selected:', idx); }
-// });
-// map.addControl(slider);
