@@ -15,9 +15,7 @@ export class LeafletWindGL extends L.Layer {
     private _windGl!: WindGL;
     // private _map!: L.Map;
     private _animationId: number | null = null;
-    private _prev_time!: number;
-    private _delta_time: number = 0;
-    private _facAnim: number = 0.001 / 120.;
+    private _tPos: number = 0;
     private _canvasExists: boolean = false;
 
     constructor(windData: WindData, options?: L.LayerOptions) {
@@ -39,43 +37,32 @@ export class LeafletWindGL extends L.Layer {
         }
         this._windGl = new WindGL(gl, this._windData);
         this._canvas.style.position = 'absolute';
-        this._updateSize();
-
         map.getPanes().overlayPane.appendChild(this._canvas);
-
-        map.on('move resize zoom', this._reset, this);
-        this._reset();
+        map.on('move resize zoom', this._draw, this);
+        this._draw();
         return this;
     }
 
     onRemove(map: L.Map): this {
         map.getPanes().overlayPane.removeChild(this._canvas);
-        map.off('move resize zoom', this._reset, this);
+        map.off('move resize zoom', this._draw, this);
         this._stopAnimation();
         return this;
     }
 
-    private _updateSize() {
-        // Don't set the size here as we'll set it in _draw based on the geographic bounds
+    setTimePos(tPos: number) {
+        this._tPos = tPos;
     }
 
-    private _reset = () => {
-        this._updateSize();
-        this._draw();
-    };
-
     private _frame() {
-        this._windGl.draw(this._delta_time);
-        const time = performance.now();
-        this._delta_time += (time - this._prev_time) * this._facAnim;
-        this._delta_time = this._delta_time % 1.5;
-        this._prev_time = time;
+        this._windGl.draw(this._tPos);
         this._animationId = requestAnimationFrame(this._frame);
     }
 
     private _startAnimation() {
         if (this._animationId !== null) {
             cancelAnimationFrame(this._animationId);
+            this._animationId = null;
         }
         if (!this._canvasExists) {
             return;
@@ -95,9 +82,6 @@ export class LeafletWindGL extends L.Layer {
         // Define geographic bounds: 0 to 30N latitude, 20 to 65E longitude
         this._setCanvasBounds();
         this._windGl.reset();
-        this._prev_time = performance.now();
-        this._delta_time = 0;
-        this._facAnim = 0.001 / 120.;
         this._startAnimation();
     }
 
