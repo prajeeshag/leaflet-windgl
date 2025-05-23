@@ -56,7 +56,7 @@ export class TimeSlider extends L.Control {
         this._slider.style.position = 'relative';
         this._slider.style.height = '4px';
         this._slider.style.background = '#ccc';
-        this._slider.style.margin = '30px 20px 10px 20px';
+        this._slider.style.margin = '20px 10px 10px 10px';
         this._slider.style.borderRadius = '2px';
 
         // Tick marks and labels
