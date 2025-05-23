@@ -1,13 +1,16 @@
 
 const L = globalThis.L as typeof import('leaflet');
 
+type Listener = (val: number) => void;
+
 export interface TimeSliderOptions extends L.ControlOptions {
     ticks: string[];
     initialPos?: number;
     tickLabelColor?: string; // New property for tick label color
-    onChange?: (value: number) => void;
     playDuration?: number; // Duration of the play in seconds
+    listeners?: Listener[];
 }
+
 
 export class TimeSlider extends L.Control {
     private _container!: HTMLElement;
@@ -15,19 +18,19 @@ export class TimeSlider extends L.Control {
     private _thumb!: HTMLElement;
     private _ticks: string[];
     private _thumbPos: number;
-    private _onChange: (value: number) => void; // Normalized value
     private _tickLabelColor: string;
     private _playButton!: HTMLElement;
     private _animationId: number | null = null;
     private _playDuration: number; // Total duration of the play in seconds
+    private _listeners: Listener[] = [];
 
     constructor(options: TimeSliderOptions) {
         super(options);
         this._ticks = options.ticks;
         this._thumbPos = options.initialPos ?? 0;
-        this._onChange = options.onChange ?? (() => { });
         this._tickLabelColor = options.tickLabelColor ?? '#000'; // Default to black
         this._playDuration = options.playDuration ?? 60; // Default to 60 seconds
+        this._listeners = options.listeners ?? [];
     }
 
     onAdd(map: L.Map) {
@@ -202,6 +205,9 @@ export class TimeSlider extends L.Control {
     private _startPlaying() {
         var lastTimestamp = performance.now();
         const animate = () => {
+            if (this.getThumbPos() >= 1.0) {
+                this.setThumbPos(0);
+            }
             const timestamp = performance.now();
             const currPos = this.getThumbPos();
             const delta = (timestamp - lastTimestamp) / (1000. * this._playDuration);
@@ -219,7 +225,6 @@ export class TimeSlider extends L.Control {
 
     private _stopPlaying() {
         if (this._animationId) {
-            console.log('Stopping animation');
             cancelAnimationFrame(this._animationId);
             this._animationId = null;
             this._playButton.innerText = '▶'; // Play icon
@@ -229,10 +234,18 @@ export class TimeSlider extends L.Control {
     setThumbPos(pos: number) {
         this._thumbPos = Math.max(0, Math.min(pos, 1.0));
         this._updateThumbPosition();
-        this._onChange(this._thumbPos);
+        this._listeners.forEach((fn) => fn(this._thumbPos));
     }
 
     getThumbPos() {
         return this._thumbPos;
+    }
+
+    addListener(fn: Listener) {
+        this._listeners.push(fn);
+    }
+
+    removeListener(fn: Listener) {
+        this._listeners = this._listeners.filter((listener) => listener !== fn);
     }
 }

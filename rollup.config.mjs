@@ -36,7 +36,7 @@ function createConfig({ input, output }) {
             typescript({
                 tsconfig: './tsconfig.json',
                 declaration: true,
-                declarationDir: 'dist/types',
+                // declarationDir: 'dist/types',
             }),
         ],
         watch: {

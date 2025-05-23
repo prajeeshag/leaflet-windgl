@@ -44,14 +44,16 @@ const windData = new WindData(
 );
 
 const windLayer = new LeafletWindGL(windData)
-windLayer.addTo(map);
 
 const slider = new TimeSlider({
     position: 'bottomleft',
-    ticks: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    ticks: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
     tickLabelColor: 'white',
-    onChange: idx => { console.log('Selected:', idx); }
 });
+
+slider.addListener(windLayer.setTimePos.bind(windLayer));
+
+windLayer.addTo(map);
 map.addControl(slider);
 
 // var store = await _openZarr('lon')
