@@ -1,0 +1,59 @@
+{
+  "shape": [
+    12,
+    361,
+    481
+  ],
+  "data_type": "float32",
+  "chunk_grid": {
+    "name": "regular",
+    "configuration": {
+      "chunk_shape": [
+        3,
+        181,
+        241
+      ]
+    }
+  },
+  "chunk_key_encoding": {
+    "name": "default",
+    "configuration": {
+      "separator": "/"
+    }
+  },
+  "fill_value": 0.0,
+  "codecs": [
+    {
+      "name": "bytes",
+      "configuration": {
+        "endian": "little"
+      }
+    },
+    {
+      "name": "zstd",
+      "configuration": {
+        "level": 0,
+        "checksum": false
+      }
+    }
+  ],
+  "attributes": {
+    "long_name": "10 metre U wind component",
+    "units": "m s**-1",
+    "code": 165,
+    "table": 128,
+    "scale_factor": 0.08362827450037003,
+    "add_offset": -10.635507583618164,
+    "valid_min": -10.635507583618164,
+    "valid_max": 10.689702987670898,
+    "_FillValue": "AAAAAAAA+H8="
+  },
+  "dimension_names": [
+    "time",
+    "lat",
+    "lon"
+  ],
+  "zarr_format": 3,
+  "node_type": "array",
+  "storage_transformers": []
+}
