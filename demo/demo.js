@@ -1,6 +1,6 @@
 import * as zarr from "https://cdn.jsdelivr.net/npm/zarrita/+esm";
-import { WindData, LeafletWindGL } from "./leaflet-windgl.js";
-import { TimeSlider } from "./leaflet-timeslider.js";
+import { WindData, LeafletWindGL } from "./js/leaflet-windgl.js";
+import { TimeSlider } from "./js/leaflet-timeslider.js";
 
 const baseUrl = `${window.location}`;
 const baseDataUrl = `${baseUrl}/data.zarr/`;
@@ -34,7 +34,7 @@ const vData = vArr.data
 const map = L.map("map", {
     crs: L.CRS.EPSG4326,
     maxBounds: [[latS, lonW], [latN, lonE]]
-}).setView([lat0, lon0], 4);
+}).setView([lat0, lon0], 3);
 
 // // Set map background to black
 map.getContainer().style.background = "black";

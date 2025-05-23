@@ -7,8 +7,8 @@ serve({
         const url = new URL(req.url);
         const path = url.pathname;
 
-        if (path.startsWith("/dist/")) {
-            const file = Bun.file(`dist/${path.slice("/dist/".length)}`);
+        if (path.startsWith("./js/")) {
+            const file = Bun.file(`dist/${path.slice("./js/".length)}`);
             if (await file.exists()) return new Response(file);
             return new Response("Not Found", { status: 404 });
         }
