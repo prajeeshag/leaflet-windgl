@@ -58,8 +58,9 @@ export class TimeSlider extends L.Control {
         this._playButton = L.DomUtil.create('button', 'lts-play-button', this._container);
         this._playButton.innerText = '▶'; // Play icon
         this._playButton.style.position = 'absolute';
-        this._playButton.style.left = '10px';
-        this._playButton.style.top = '50%';
+        this._playButton.style.left = '5px';
+        // this._playButton.style.top = '20px';
+        this._playButton.style.margin = '20px 0px 10px 0px'; // Adjust margin to account for play button
         this._playButton.style.transform = 'translateY(-50%)';
         this._playButton.style.width = '30px';
         this._playButton.style.height = '30px';
@@ -76,7 +77,7 @@ export class TimeSlider extends L.Control {
         this._slider.style.position = 'relative';
         this._slider.style.height = '4px';
         this._slider.style.background = '#ccc';
-        this._slider.style.margin = '20px 10px 10px 50px'; // Adjust margin to account for play button
+        this._slider.style.margin = '20px 10px 10px 40px'; // Adjust margin to account for play button
         this._slider.style.borderRadius = '2px';
 
         // Tick marks and labels
