@@ -17,12 +17,20 @@ export class LeafletWindGL extends L.Layer {
     private _animationId: number | null = null;
     private _tPos: number = 0;
     private _canvasExists: boolean = false;
+    private _northWest: L.LatLng;
+    private _southEast: L.LatLng;
 
-    constructor(windData: WindData, options?: L.LayerOptions) {
+    constructor(
+        windData: WindData,
+        bounds: { lonE: number, lonW: number, latS: number, latN: number },
+        options?: L.LayerOptions
+    ) {
         super(options);
         L.setOptions(this, options);
         this._windData = windData;
         this._frame = this._frame.bind(this);
+        this._northWest = L.latLng(bounds.latN, bounds.lonW);
+        this._southEast = L.latLng(bounds.latS, bounds.lonE);
     }
 
     onAdd(map: L.Map): this {
@@ -112,8 +120,8 @@ export class LeafletWindGL extends L.Layer {
     }
 
     private _setCanvasBounds() {
-        const northWest = L.latLng(30, 20);
-        const southEast = L.latLng(0, 65);
+        const northWest = this._northWest
+        const southEast = this._southEast
 
         // Convert geographic bounds to layer points 
         // this is also the bound of Wind Grid in pixels

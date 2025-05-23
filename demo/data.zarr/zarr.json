@@ -1,0 +1,12 @@
+{
+  "attributes": {
+    "CDI": "Climate Data Interface version 2.4.4 (https://mpimet.mpg.de/cdi)",
+    "Conventions": "CF-1.6",
+    "institution": "European Centre for Medium-Range Weather Forecasts",
+    "history": "Fri May 23 17:27:04 2025: cdo --eccodes -f nc -ymonmean 9b64f4ebf6dfd4e67163eac01fa956c6.grib data_monclim1.nc",
+    "CDO": "Climate Data Operators version 2.4.4 (https://mpimet.mpg.de/cdo)"
+  },
+  "zarr_format": 3,
+  "consolidated_metadata": null,
+  "node_type": "group"
+}

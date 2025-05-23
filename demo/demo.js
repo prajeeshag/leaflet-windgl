@@ -2,37 +2,49 @@ import * as zarr from "https://cdn.jsdelivr.net/npm/zarrita/+esm";
 import { WindData, LeafletWindGL } from "/dist/leaflet-windgl.js";
 import { TimeSlider } from "/dist/leaflet-timeslider.js";
 
-// import { WindData } from "./windgl.js";
-// import WindGL from "./windgl.js";
-
-// Create map and test plugin
-const map = L.map("map", {
-    // crs: crsLambert,
-    maxBounds: [[0, 20], [30, 65]]
-}).setView([10, 47], 5);
-
-
-
-
-// Set map background to black
-map.getContainer().style.background = "black";
-// L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-
-const baseUrl = `${window.location.origin}/wind.zarr/`;
+const baseUrl = `${window.location.origin}/data.zarr/`;
 const _openZarr = (url) => {
     return zarr.open.v3(new zarr.FetchStore(baseUrl + url), { kind: "array" })
 };
 
-var store = await _openZarr('V10')
+var store = await _openZarr('10v')
 const vAttr = store.attrs
 const vArr = await zarr.get(store)
 
-var store = await _openZarr('U10')
+var store = await _openZarr('10u')
 const uAttr = store.attrs
 const uArr = await zarr.get(store)
 
+const shape = vArr.shape
+
+var store = await _openZarr('lon')
+const lonW = await zarr.get(store, [0])
+const lonE = await zarr.get(store, [shape[2] - 1])
+var store = await _openZarr('lat')
+const latN = await zarr.get(store, [0])
+const latS = await zarr.get(store, [shape[1] - 1])
+console.log({ lonE, lonW, latN, latS });
+
+const lat0 = (latN + latS) * 0.5;
+const lon0 = (lonE + lonW) * 0.5;
+console.log({ lat0, lon0 });
+
+
 const uData = uArr.data
 const vData = vArr.data
+
+const map = L.map("map", {
+    maxBounds: [[latS, lonW], [latN, lonE]]
+}).setView([lon0, lon0], 4);
+
+
+
+
+// // Set map background to black
+map.getContainer().style.background = "black";
+
+// // L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
 const windData = new WindData(
     uData,
     vData,
@@ -43,11 +55,11 @@ const windData = new WindData(
     uArr.shape[0],
 );
 
-const windLayer = new LeafletWindGL(windData)
+const windLayer = new LeafletWindGL(windData, { lonE, lonW, latS, latN })
 
 const slider = new TimeSlider({
     position: 'bottomleft',
-    ticks: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
+    ticks: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
     tickLabelColor: 'white',
 });
 
