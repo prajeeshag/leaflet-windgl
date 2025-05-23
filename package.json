@@ -23,6 +23,6 @@
     "typescript": "^5"
   },
   "scripts": {
-    "deploy-demo": "gh-pages -d demo"
+    "deploy-demo": "cp dist/*.js demo/js/ && gh-pages -d demo"
   }
 }

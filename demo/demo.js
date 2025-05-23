@@ -8,11 +8,11 @@ const _openZarr = (url) => {
     return zarr.open.v3(new zarr.FetchStore(baseDataUrl + url), { kind: "array" })
 };
 
-var store = await _openZarr('10v')
+var store = await _openZarr('100v')
 const vAttr = store.attrs
 const vArr = await zarr.get(store)
 
-var store = await _openZarr('10u')
+var store = await _openZarr('100u')
 const uAttr = store.attrs
 const uArr = await zarr.get(store)
 

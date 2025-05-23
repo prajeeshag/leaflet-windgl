@@ -6,9 +6,10 @@ serve({
     async fetch(req) {
         const url = new URL(req.url);
         const path = url.pathname;
-
-        if (path.startsWith("./js/")) {
-            const file = Bun.file(`dist/${path.slice("./js/".length)}`);
+        console.log(`Request for ${path}`);
+        if (path.startsWith("/js/")) {
+            const file = Bun.file(`dist/${path.slice("/js/".length)}`);
+            console.log(`Serving ${file}`);
             if (await file.exists()) return new Response(file);
             return new Response("Not Found", { status: 404 });
         }
