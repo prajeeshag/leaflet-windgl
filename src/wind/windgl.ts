@@ -2,7 +2,8 @@
 import Util from './util';
 
 
-import drawVert from './shaders/draw.vert.glsl';
+//import drawVert from './shaders/draw.vert.glsl';
+import { getDrawVertShader } from './shaders/drawVert';
 import drawFrag from './shaders/draw.frag.glsl';
 
 import quadVert from './shaders/quad.vert.glsl';
@@ -34,6 +35,7 @@ export default class WindGL {
     dropRate = 0.009; // how fast the particle will die off
     minSpeedColor = 1.0; // minimum color velocity
     maxSpeedColor = 15.0; // maximum color velocity
+    private _particleLength: number = 2; // length of a particle with its tail
     private _particlesPerPixel: number = 0.03
     private _programs: { [key: string]: any } = {}
     private _quadBuffer: any;
@@ -56,6 +58,7 @@ export default class WindGL {
     constructor(gl: WebGLRenderingContext, windData: WindData) {
         this.gl = gl;
         this._util = new Util(gl);
+        const drawVert = getDrawVertShader(this._particleLength);
         this._programs['draw'] = this._util.createProgram(drawVert, drawFrag);
         this._programs['screen'] = this._util.createProgram(quadVert, screenFrag);
         this._programs['update'] = this._util.createProgram(quadVert, updateFrag);
@@ -161,9 +164,7 @@ export default class WindGL {
         gl.disable(gl.STENCIL_TEST);
         this._drawScreen();
         this._updateParticleProp();
-        this._updateParticles();
-        this._particlePosTexture.reverse()
-        this._particlePropTexture.reverse()
+        this._updateParticlePos();
     }
 
     private _drawScreen() {
@@ -214,8 +215,11 @@ export default class WindGL {
         gl.uniform1f(program.u_time_fac, this._timeFactor);
         gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
         gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
-        this._util.bindTexture(program.u_particles, this._particlePosTexture[0])
-        this._util.bindTexture(program.u_particle_props, this._particlePropTexture[0])
+        const particleLen = this._particleLength;
+        for (let i = 0; i < particleLen; i++) {
+            this._util.bindTexture(program[`u_particles_${i}`], this._particlePosTexture[particleLen - 1 - i]!);
+            this._util.bindTexture(program[`u_particle_props_${i}`], this._particlePropTexture[particleLen - 1 - i]!);
+        }
         this._util.bindTexture(program.u_color_ramp, this._colorRampTexture)
 
         gl.uniform1f(program.u_particles_res, this._particleStateResolution);
@@ -227,9 +231,10 @@ export default class WindGL {
         gl.drawArrays(gl.POINTS, 0, this._numParticles);
     }
 
-    private _updateParticles() {
+    private _updateParticlePos() {
         const gl = this.gl;
-        this._util.bindFramebuffer(this._framebuffer, this._particlePosTexture[1]);
+        const newHeadTex = this._particlePosTexture.shift();
+        this._util.bindFramebuffer(this._framebuffer, newHeadTex!);
         gl.viewport(0, 0, this._particleStateResolution, this._particleStateResolution);
 
         const program = this._programs.update;
@@ -241,8 +246,8 @@ export default class WindGL {
         this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
 
         this._util.bindTexture(program.u_wind, windTex)
-        this._util.bindTexture(program.u_particles, this._particlePosTexture[0])
-        this._util.bindTexture(program.u_particle_props, this._particlePropTexture[0])
+        this._util.bindTexture(program.u_particles, this._particlePosTexture[this._particlePosTexture.length - 1]!)
+        this._util.bindTexture(program.u_particle_props, this._particlePropTexture[this._particlePropTexture.length - 1]!)
 
         gl.uniform1f(program.u_time_fac, this._timeFactor);
         gl.uniform1f(program.u_rand_seed, Math.random());
@@ -252,13 +257,14 @@ export default class WindGL {
         gl.uniform2f(program.u_wind_min, this._windData.uMin, this._windData.vMin);
         gl.uniform2f(program.u_wind_max, this._windData.uMax, this._windData.vMax);
         gl.uniform1f(program.u_speed_factor, this.speedFactor);
-
         gl.drawArrays(gl.TRIANGLES, 0, 6);
+        this._particlePosTexture.push(newHeadTex!);
     }
 
     private _updateParticleProp() {
         const gl = this.gl;
-        this._util.bindFramebuffer(this._framebuffer, this._particlePropTexture[1]);
+        const newHeadTex = this._particlePropTexture.shift();
+        this._util.bindFramebuffer(this._framebuffer, newHeadTex!);
         gl.viewport(0, 0, this._particleStateResolution, this._particleStateResolution);
 
         const program = this._programs.updateProp;
@@ -268,8 +274,8 @@ export default class WindGL {
         this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
 
         this._util.bindTexture(program.u_wind, windTex!)
-        this._util.bindTexture(program.u_particles, this._particlePosTexture[0])
-        this._util.bindTexture(program.u_particle_props, this._particlePropTexture[0])
+        this._util.bindTexture(program.u_particles, this._particlePosTexture[this._particlePosTexture.length - 1]!)
+        this._util.bindTexture(program.u_particle_props, this._particlePropTexture[this._particlePropTexture.length - 1]!)
         gl.uniform1f(program.u_time_fac, this._timeFactor);
         gl.uniform2f(program.u_wind_res, this._windData.width, this._windData.height);
         gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
@@ -281,6 +287,7 @@ export default class WindGL {
         gl.uniform1f(program.u_drop_rate, this.dropRate);
 
         gl.drawArrays(gl.TRIANGLES, 0, 6);
+        this._particlePropTexture.push(newHeadTex!);
     }
 }
 
