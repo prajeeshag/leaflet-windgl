@@ -30,8 +30,8 @@ const defaultRampColors = {
 
 export default class WindGL {
     gl: WebGLRenderingContext
-    fadeOpacity = 0.99; // how fast the particle trails fade on each frame
-    speedFactor = 1.5; // how fast the particles move
+    fadeOpacity = 0.0; // how fast the particle trails fade on each frame
+    speedFactor = 1.2; // how fast the particles move
     dropRate = 0.009; // how fast the particle will die off
     minSpeedColor = 1.0; // minimum color velocity
     maxSpeedColor = 15.0; // maximum color velocity
@@ -44,8 +44,8 @@ export default class WindGL {
     private _colorRampTexture: WebGLTexture;
     private _particleStateResolution!: number;
     private _numParticles!: number;
-    private _particlePosTexture!: [WebGLTexture, WebGLTexture]
-    private _particlePropTexture!: [WebGLTexture, WebGLTexture]
+    private _particlePosTexture: WebGLTexture[] = []
+    private _particlePropTexture: WebGLTexture[] = []
     private _particleIndexBuffer!: WebGLBuffer;
     private _windTextures: WindTexture
     private _windData: WindData;
@@ -59,6 +59,7 @@ export default class WindGL {
         this.gl = gl;
         this._util = new Util(gl);
         const drawVert = getDrawVertShader(this._particleLength);
+        console.log(drawVert);
         this._programs['draw'] = this._util.createProgram(drawVert, drawFrag);
         this._programs['screen'] = this._util.createProgram(quadVert, screenFrag);
         this._programs['update'] = this._util.createProgram(quadVert, updateFrag);
@@ -88,6 +89,7 @@ export default class WindGL {
         const particlesPerPixel = this._particlesPerPixel;
         const gl = this.gl;
         const numParticles = Math.floor(particlesPerPixel * gl.canvas.width * gl.canvas.height);
+        // const numParticles = 16;  // for testing purposes, we use a fixed number of particles
         const particleRes = this._particleStateResolution = Math.floor(Math.sqrt(numParticles));
         this._numParticles = particleRes * particleRes;
         const numParticlesRGBA = this._numParticles * 4;
@@ -98,32 +100,34 @@ export default class WindGL {
             particleState[i] = Math.floor(Math.random() * 256); // randomize the initial particle positions
         }
         for (let i = 0; i < numParticlesRGBA; i++) {
-            particleProp[i] = 128; // randomize the initial particle positions
+            particleProp[i] = 0; // initial particle age
         }
-        // textures to hold the particle state for the current and the next frame
-        if (this._particlePosTexture) {
-            gl.deleteTexture(this._particlePosTexture[0]);
-            gl.deleteTexture(this._particlePosTexture[1]);
+        for (let i = 0; i < this._particlePosTexture.length; i++) {
+            gl.deleteTexture(this._particlePosTexture[i]!)
         }
-        this._particlePosTexture = [
-            this._util.createTexture(gl.NEAREST, particleState, particleRes, particleRes),
-            this._util.createTexture(gl.NEAREST, particleState, particleRes, particleRes)
-        ];
-        if (this._particlePropTexture) {
-            gl.deleteTexture(this._particlePropTexture[0]);
-            gl.deleteTexture(this._particlePropTexture[1]);
+        this._particlePosTexture.length = 0;
+        for (let i = 0; i < this._particleLength; i++) {
+            this._particlePosTexture.push(
+                this._util.createTexture(gl.NEAREST, particleState, particleRes, particleRes),
+            );
         }
-        this._particlePropTexture = [
-            this._util.createTexture(gl.NEAREST, particleState, particleRes, particleRes),
-            this._util.createTexture(gl.NEAREST, particleState, particleRes, particleRes)
-        ];
 
-        const particleIndices = new Float32Array(this._numParticles);
-        for (let i = 0; i < this._numParticles; i++) particleIndices[i] = i;
+        for (let i = 0; i < this._particlePropTexture.length; i++) {
+            gl.deleteTexture(this._particlePropTexture[i]!)
+        }
+        this._particlePropTexture.length = 0;
+        for (let i = 0; i < this._particleLength; i++) {
+            this._particlePropTexture.push(
+                this._util.createTexture(gl.NEAREST, particleState, particleRes, particleRes),
+            );
+        }
+
+        const pointIndices = new Float32Array(this._numParticles * this._particleLength);
+        for (let i = 0; i < this._numParticles * this._particleLength; i++) pointIndices[i] = i;
         if (this._particleIndexBuffer) {
             gl.deleteBuffer(this._particleIndexBuffer);
         }
-        this._particleIndexBuffer = this._util.createBuffer(particleIndices);
+        this._particleIndexBuffer = this._util.createBuffer(pointIndices);
     }
 
     private _initScreenTexture() {
@@ -183,7 +187,6 @@ export default class WindGL {
         this._drawTexture(this._screenTexture[0], 1.0);
         gl.disable(gl.BLEND);
         this._screenTexture.reverse()
-        // save the current screen as the background for the next frame
     }
 
     private _drawTexture(texture: WebGLTexture, opacity: number) {
@@ -228,7 +231,7 @@ export default class WindGL {
         gl.uniform1f(program.u_wind_spd_min, this.minSpeedColor);
         gl.uniform1f(program.u_wind_spd_max, this.maxSpeedColor);
 
-        gl.drawArrays(gl.POINTS, 0, this._numParticles);
+        gl.drawArrays(gl.POINTS, 0, this._numParticles * this._particleLength);
     }
 
     private _updateParticlePos() {
