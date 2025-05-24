@@ -20,10 +20,9 @@ float getParticleAge(const vec2 coord) {
 }
 
 void main() {
-    vec2 coord = vec2(fract(a_index / u_particles_res.x), floor(a_index / u_particles_res.x) / u_particles_res.x);
-
+    vec2 coord = vec2(fract(a_index / u_particles_res.x), floor(a_index / u_particles_res.x) / u_particles_res.y);
     v_particle_pos = getParticlePos(coord);
     v_particle_age = getParticleAge(coord);
-    gl_PointSize = 1.;
+    gl_PointSize = 4.;
     gl_Position = vec4(2.0 * v_particle_pos.x - 1.0, 1.0 - 2.0 * v_particle_pos.y, 0.0, 1.0);
 }
