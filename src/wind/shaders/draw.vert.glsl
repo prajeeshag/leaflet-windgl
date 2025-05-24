@@ -5,13 +5,13 @@ attribute float a_index;
 
 uniform sampler2D u_particles;
 uniform sampler2D u_particle_props;
-uniform float u_particles_res;
+uniform vec2 u_particles_res;
 
 varying vec2 v_particle_pos;
 varying float v_particle_age;
 
 void main() {
-    vec2 coord = vec2(fract(a_index / u_particles_res), floor(a_index / u_particles_res) / u_particles_res);
+    vec2 coord = vec2(fract(a_index / u_particles_res.x), floor(a_index / u_particles_res.x) / u_particles_res.y);
     vec4 color = texture2D(u_particles, coord);
     // decode current particle position from the pixel's RGBA value
     v_particle_pos = vec2(color.r / 255.0 + color.b, color.g / 255.0 + color.a);

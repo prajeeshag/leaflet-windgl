@@ -12,31 +12,31 @@ import screenFrag from './shaders/screen.frag.glsl';
 import updateFrag from './shaders/update.frag.glsl';
 import updatePropFrag from './shaders/updateProp.frag.glsl'
 
-// const defaultRampColors = {
-//     0.0: 'rgba(44,123,182,0.5)',    // blue
-//     0.1: 'rgba(0,166,202,0.7)',     // cyan
-//     0.2: 'rgba(0,204,188,0.8)',     // teal
-//     0.3: 'rgba(144,235,157,0.8)',   // light green
-//     0.5: 'rgba(255,255,140,0.9)',   // yellow
-//     0.7: 'rgba(249,208,87,1)',    // orange
-//     0.8: 'rgba(242,158,46,1)',    // orange-brown
-//     1.0: 'rgba(215,25,28,1)',     // red
-// };
-
 const defaultRampColors = {
-    0.0: '#ffffff',
-    1.0: '#ffffff',
+    0.0: 'rgba(44,123,182,0.5)',    // blue
+    0.1: 'rgba(0,166,202,0.7)',     // cyan
+    0.2: 'rgba(0,204,188,0.8)',     // teal
+    0.3: 'rgba(144,235,157,0.8)',   // light green
+    0.5: 'rgba(255,255,140,0.9)',   // yellow
+    0.7: 'rgba(249,208,87,1)',    // orange
+    0.8: 'rgba(242,158,46,1)',    // orange-brown
+    1.0: 'rgba(215,25,28,1)',     // red
 };
+
+// const defaultRampColors = {
+//     0.0: 'rgba(250,250,250,0.3)', // transparent
+//     1.0: 'rgba(250,250,250,0.8)', // transparent
+// };
 
 export default class WindGL {
     gl: WebGLRenderingContext
     fadeOpacity = 0.0; // how fast the particle trails fade on each frame
-    speedFactor = 2.0; // how fast the particles move
-    dropRate = 0.09; // how fast the particle will die off
+    speedFactor = 1.9; // how fast the particles move
+    dropRate = 0.009; // how fast the particle will die off
     minSpeedColor = 1.0; // minimum color velocity
     maxSpeedColor = 15.0; // maximum color velocity
-    private _particleLength: number = 20; // length of a particle with its tail
-    private _particlesPerPixel: number = 0.03
+    private _particleLength: number = 30; // length of a particle with its tail
+    private _particlesPerPixel: number = 0.02
     private _programs: { [key: string]: any } = {}
     private _quadBuffer: any;
     private _framebuffer!: WebGLFramebuffer;
@@ -179,9 +179,9 @@ export default class WindGL {
         this._util.bindFramebuffer(this._framebuffer, this._screenTexture[0]);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-        // gl.clearColor(0, 0, 0, 0);
-        // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
-        this._drawTexture(this._screenTexture[1], this.fadeOpacity);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+        // this._drawTexture(this._screenTexture[1], this.fadeOpacity);
         this._drawParticles();
 
         this._util.bindFramebuffer(null);
@@ -190,7 +190,7 @@ export default class WindGL {
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         this._drawTexture(this._screenTexture[0], 1.0);
         gl.disable(gl.BLEND);
-        this._screenTexture.reverse()
+        // this._screenTexture.reverse()
     }
 
     private _drawTexture(texture: WebGLTexture, opacity: number) {
@@ -229,11 +229,14 @@ export default class WindGL {
         gl.uniform1f(program.u_wind_spd_max, this.maxSpeedColor);
         this._util.bindTexture(program.u_color_ramp, this._colorRampTexture)
         const particleLen = this._particleLength;
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         for (let i = 0; i < particleLen; i++) {
             this._util.bindTexture(program[`u_particles_0`], this._particlePosTexture[particleLen - 1 - i]!);
             this._util.bindTexture(program[`u_particle_props_0`], this._particlePropTexture[particleLen - 1 - i]!);
             gl.drawArrays(gl.POINTS, 0, this._numParticles);
         }
+        gl.disable(gl.BLEND);
     }
 
     private _updateParticlePos() {
