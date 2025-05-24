@@ -46,7 +46,7 @@ void main() {
 
     // a random seed to use for the particle drop
     vec2 seed = (pos + v_tex_pos) * u_rand_seed;
-    float drop = step(age, 0.0);
+    float drop = step(1.0, age); // 1 <= age drop = 1.0 
 
     vec2 random_pos = vec2(rand(seed + 1.3), rand(seed + 2.1));
 
