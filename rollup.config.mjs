@@ -2,6 +2,7 @@ import { defineConfig } from 'rollup';
 import typescript from '@rollup/plugin-typescript';
 import { default as glslOptimize } from 'rollup-plugin-glsl-optimize';
 import resolve from '@rollup/plugin-node-resolve';
+import watch from 'rollup-plugin-watch-globs';
 
 const buildConfigs = [
     {
@@ -27,6 +28,7 @@ function createConfig({ input, output }) {
             sourcemap: true,
         },
         plugins: [
+            watch(["src/**/*.glsl"]),
             glslOptimize({
                 include: ['src/**/*.glsl'],
                 optimize: false,

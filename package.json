@@ -15,6 +15,7 @@
     "rollup-plugin-glsl-optimize": "^1.0.4",
     "rollup-plugin-resolve": "^0.0.1-predev.1",
     "rollup-plugin-string": "^3.0.0",
+    "rollup-plugin-watch-globs": "^2.0.1",
     "tslib": "^2.8.1",
     "vite": "^6.3.5",
     "zarrita": "^0.5.1"
