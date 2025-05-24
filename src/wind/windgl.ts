@@ -2,8 +2,8 @@
 import Util from './util';
 
 
-//import drawVert from './shaders/draw.vert.glsl';
-import { getDrawVertShader } from './shaders/drawVert';
+import drawVert from './shaders/draw.vert.glsl';
+// import { getDrawVertShader } from './shaders/drawVert';
 import drawFrag from './shaders/draw.frag.glsl';
 
 import quadVert from './shaders/quad.vert.glsl';
@@ -60,7 +60,7 @@ export default class WindGL {
         this._util = new Util(gl);
         console.log(gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS))
         console.log(gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS))
-        const drawVert = getDrawVertShader(1);
+        // const drawVert = getDrawVertShader(1);
         console.log(drawVert);
         this._programs['draw'] = this._util.createProgram(drawVert, drawFrag);
         this._programs['screen'] = this._util.createProgram(quadVert, screenFrag);
@@ -232,8 +232,8 @@ export default class WindGL {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         for (let i = 0; i < particleLen; i++) {
-            this._util.bindTexture(program[`u_particles_0`], this._particlePosTexture[particleLen - 1 - i]!);
-            this._util.bindTexture(program[`u_particle_props_0`], this._particlePropTexture[particleLen - 1 - i]!);
+            this._util.bindTexture(program[`u_particles`], this._particlePosTexture[particleLen - 1 - i]!);
+            this._util.bindTexture(program[`u_particle_props`], this._particlePropTexture[particleLen - 1 - i]!);
             gl.drawArrays(gl.POINTS, 0, this._numParticles);
         }
         gl.disable(gl.BLEND);
