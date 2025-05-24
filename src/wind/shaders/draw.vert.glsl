@@ -2,7 +2,7 @@
 precision mediump float;
 attribute float a_index;
 
-uniform float u_particles_res;
+uniform vec2 u_particles_res;
 uniform sampler2D u_particles;
 uniform sampler2D u_particle_props;
 
@@ -20,7 +20,7 @@ float getParticleAge(const vec2 coord) {
 }
 
 void main() {
-    vec2 coord = vec2(fract(a_index / u_particles_res), floor(a_index / u_particles_res) / u_particles_res);
+    vec2 coord = vec2(fract(a_index / u_particles_res.x), floor(a_index / u_particles_res.x) / u_particles_res.x);
 
     v_particle_pos = getParticlePos(coord);
     v_particle_age = getParticleAge(coord);

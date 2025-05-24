@@ -42,7 +42,7 @@ export default class WindGL {
     private _framebuffer!: WebGLFramebuffer;
     private _screenTexture!: [WebGLTexture, WebGLTexture];
     private _colorRampTexture: WebGLTexture;
-    private _particleStateResolution!: number;
+    private _particleTexShape!: [number, number];
     private _numParticles!: number;
     private _particlePosTexture: WebGLTexture[] = []
     private _particlePropTexture: WebGLTexture[] = []
@@ -90,10 +90,11 @@ export default class WindGL {
     private _initParticles() {
         const particlesPerPixel = this._particlesPerPixel;
         const gl = this.gl;
-        const numParticles = Math.floor(particlesPerPixel * gl.canvas.width * gl.canvas.height);
-        // const numParticles = 16;  // for testing purposes, we use a fixed number of particles
-        const particleRes = this._particleStateResolution = Math.floor(Math.sqrt(numParticles));
-        this._numParticles = particleRes * particleRes;
+        // const numParticles = Math.floor(particlesPerPixel * gl.canvas.width * gl.canvas.height);
+        const numParticles = 16;  // for testing purposes, we use a fixed number of particles
+        this._particleTexShape = [numParticles, 1]
+        const particleRes = this._particleTexShape;
+        this._numParticles = numParticles;
         const numParticlesRGBA = this._numParticles * 4;
         // two sets of rgba texture, first for position, second for properties
         const particleState = new Uint8Array(numParticlesRGBA);
@@ -110,7 +111,7 @@ export default class WindGL {
         this._particlePosTexture.length = 0;
         for (let i = 0; i < this._particleLength; i++) {
             this._particlePosTexture.push(
-                this._util.createTexture(gl.NEAREST, particleState, particleRes, particleRes),
+                this._util.createTexture(gl.NEAREST, particleState, particleRes[0], particleRes[1]),
             );
         }
 
@@ -120,7 +121,7 @@ export default class WindGL {
         this._particlePropTexture.length = 0;
         for (let i = 0; i < this._particleLength; i++) {
             this._particlePropTexture.push(
-                this._util.createTexture(gl.NEAREST, particleState, particleRes, particleRes),
+                this._util.createTexture(gl.NEAREST, particleState, particleRes[0], particleRes[1]),
             );
         }
 
@@ -129,6 +130,7 @@ export default class WindGL {
         if (this._particleIndexBuffer) {
             gl.deleteBuffer(this._particleIndexBuffer);
         }
+        console.log(pointIndices)
         this._particleIndexBuffer = this._util.createBuffer(pointIndices);
     }
 
@@ -222,7 +224,7 @@ export default class WindGL {
         gl.uniform1f(program.u_time_fac, this._timeFactor);
         gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
         gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
-        gl.uniform1f(program.u_particles_res, this._particleStateResolution);
+        gl.uniform2f(program.u_particles_res, this._particleTexShape[0], this._particleTexShape[1]);
         gl.uniform2f(program.u_wind_min, this._windData.uMin, this._windData.vMin);
         gl.uniform2f(program.u_wind_max, this._windData.uMax, this._windData.vMax);
         gl.uniform1f(program.u_wind_spd_min, this.minSpeedColor);
@@ -243,7 +245,7 @@ export default class WindGL {
         const gl = this.gl;
         const newHeadTex = this._particlePosTexture.shift();
         this._util.bindFramebuffer(this._framebuffer, newHeadTex!);
-        gl.viewport(0, 0, this._particleStateResolution, this._particleStateResolution);
+        gl.viewport(0, 0, this._particleTexShape[0], this._particleTexShape[1]);
 
         const program = this._programs.update;
         const windTex = this._windTextures.textures[this._texIndex];
@@ -273,7 +275,7 @@ export default class WindGL {
         const gl = this.gl;
         const newHeadTex = this._particlePropTexture.shift();
         this._util.bindFramebuffer(this._framebuffer, newHeadTex!);
-        gl.viewport(0, 0, this._particleStateResolution, this._particleStateResolution);
+        gl.viewport(0, 0, this._particleTexShape[0], this._particleTexShape[1]);
 
         const program = this._programs.updateProp;
         const windTex = this._windTextures.textures[this._texIndex];
