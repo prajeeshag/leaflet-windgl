@@ -3,7 +3,10 @@ export function getDrawVertShader(particleLength: number) {
 
     var particleUniformDef = ""
     for (let i = 0; i < particleLength; i++) {
-        particleUniformDef += `uniform sampler2D u_particles_${i};\nuniform sampler2D u_particle_props_${i};\n`;
+        particleUniformDef += `
+        uniform sampler2D u_particles_${i};
+        uniform sampler2D u_particle_props_${i};
+        `;
     }
 
     return `#version 100
@@ -26,23 +29,30 @@ export function getDrawVertShader(particleLength: number) {
         return color.r + color.g / 255.0;
     }
 
+    float getWgt(const float particleIndex){
+        return 1.0 - min(mod((a_index + ${particleLength}.0 - particleIndex), ${particleLength}.0), 1.0);
+    }
+
     void main() {
         float p_index = floor(a_index / ${particleLength}.0);
         vec2 coord = vec2(fract(p_index / u_particles_res), floor(p_index / u_particles_res) / u_particles_res);
 
         v_particle_pos = vec2(0.0);
         v_particle_age = 0.0;
-
-        float wgt_0 = 1.0 - min(mod((a_index + ${particleLength}.0 - 0.0), ${particleLength}.0), 1.0);
-        v_particle_pos += getParticlePos(coord, u_particles_0) * wgt_0; 
-        v_particle_age += getParticleAge(coord, u_particle_props_0) * wgt_0;
-
-        float wgt_1 = 1.0 - min(mod((a_index + ${particleLength}.0 - 1.0), ${particleLength}.0), 1.0);
-        v_particle_pos += getParticlePos(coord, u_particles_1) * wgt_1; 
-        v_particle_age += getParticleAge(coord, u_particle_props_1) * wgt_1;
-
+        ${getParticleUpdate(particleLength)}
         gl_PointSize = 1.;
         gl_Position = vec4(2.0 * v_particle_pos.x - 1.0, 1.0 - 2.0 * v_particle_pos.y, 0.0, 1.0);
     }
 `
+}
+
+function getParticleUpdate(particleLength: number) {
+    let update = "";
+    for (let i = 0; i < particleLength; i++) {
+        update += `
+        v_particle_pos += getParticlePos(coord, u_particles_${i}) * getWgt(${i}.0); 
+        v_particle_age += getParticleAge(coord, u_particle_props_${i}) * getWgt(${i}.0);
+        `;
+    }
+    return update;
 }
