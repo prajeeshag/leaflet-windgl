@@ -30,16 +30,16 @@ export function getDrawVertShader(particleLength: number) {
         float p_index = floor(a_index / ${particleLength}.0);
         vec2 coord = vec2(fract(p_index / u_particles_res), floor(p_index / u_particles_res) / u_particles_res);
 
+        v_particle_pos = vec2(0.0);
+        v_particle_age = 0.0;
+
         float wgt_0 = 1.0 - min(mod((a_index + ${particleLength}.0 - 0.0), ${particleLength}.0), 1.0);
-        vec2 v_particle_pos_0 = getParticlePos(coord, u_particles_0) * wgt_0; 
-        float v_particle_age_0 = getParticleAge(coord, u_particle_props_0) * wgt_0;
+        v_particle_pos += getParticlePos(coord, u_particles_0) * wgt_0; 
+        v_particle_age += getParticleAge(coord, u_particle_props_0) * wgt_0;
 
         float wgt_1 = 1.0 - min(mod((a_index + ${particleLength}.0 - 1.0), ${particleLength}.0), 1.0);
-        vec2 v_particle_pos_1 = getParticlePos(coord, u_particles_1) * wgt_1; 
-        float v_particle_age_1 = getParticleAge(coord, u_particle_props_1) * wgt_1;
-
-        v_particle_pos = v_particle_pos_0 + v_particle_pos_1;
-        v_particle_age = v_particle_age_0 + v_particle_age_1;
+        v_particle_pos += getParticlePos(coord, u_particles_1) * wgt_1; 
+        v_particle_age += getParticleAge(coord, u_particle_props_1) * wgt_1;
 
         gl_PointSize = 1.;
         gl_Position = vec4(2.0 * v_particle_pos.x - 1.0, 1.0 - 2.0 * v_particle_pos.y, 0.0, 1.0);
