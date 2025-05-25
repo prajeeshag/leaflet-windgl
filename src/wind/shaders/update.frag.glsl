@@ -27,7 +27,8 @@ float rand(const vec2 co) {
 
 void main() {
     float head = step(v_tex_pos.x, 1.0 / u_particles_res.x);
-    vec4 color = texture2D(u_particles, v_tex_pos);
+    vec2 shift_pos = vec2(v_tex_pos.x - 1.0 / u_particles_res.x, v_tex_pos.y);
+    vec4 color = texture2D(u_particles, shift_pos);
     vec2 pos = vec2(color.r / 255.0 + color.b, color.g / 255.0 + color.a); // decode particle position from pixel RGBA
     color = texture2D(u_particle_props, v_tex_pos);
     float age = color.r + color.g / 255.0;
