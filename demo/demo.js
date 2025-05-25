@@ -34,37 +34,48 @@ const vData = vArr.data
 const map = L.map("map", {
     crs: L.CRS.EPSG4326,
     maxBounds: [[latS, lonW], [latN, lonE]]
-}).setView([lat0, lon0], 3);
+}).setView([lat0, lon0], 2);
 
 // // Set map background to black
 map.getContainer().style.background = "black";
 
 
-fetch(`${baseUrl}/countryMap.geojson`)
-    .then(res => res.json())
-    .then(geojson => {
-        const borderLayer = L.geoJSON(geojson, {
-            style: {
-                color: 'white',
-                weight: 1,
-                fill: false
-            }
-        })
-        borderLayer.addTo(map)
-    })
+// fetch(`${baseUrl}/countryMap.geojson`)
+//     .then(res => res.json())
+//     .then(geojson => {
+//         const borderLayer = L.geoJSON(geojson, {
+//             style: {
+//                 color: 'white',
+//                 weight: 1,
+//                 fill: false
+//             }
+//         })
+//         borderLayer.addTo(map)
+//     })
 
 
 // // L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
+// create a const wind field of type uint18array
+const tempData = new Uint8Array(uArr.shape[0] * uArr.shape[1] * uArr.shape[2]).fill(254);
 const windData = new WindData(
-    uData,
-    vData,
-    [uAttr.valid_min, uAttr.valid_max],
-    [vAttr.valid_min, vAttr.valid_max],
+    tempData,
+    tempData,
+    [0, 10],
+    [0, 10],
     uArr.shape[2],
     uArr.shape[1],
     uArr.shape[0],
 );
+// const windData = new WindData(
+//     uData,
+//     vData,
+//     [uAttr.valid_min, uAttr.valid_max],
+//     [vAttr.valid_min, vAttr.valid_max],
+//     uArr.shape[2],
+//     uArr.shape[1],
+//     uArr.shape[0],
+// );
 
 const windLayer = new LeafletWindGL(windData, { lonE, lonW, latS, latN })
 
