@@ -10,7 +10,7 @@ import screenFrag from './shaders/screen.frag.glsl';
 
 import updateVert from './shaders/update.vert.glsl';
 import updateFrag from './shaders/update.frag.glsl';
-import updatePropFrag from './shaders/updateProp.frag.glsl'
+import updateAgeFrag from './shaders/updateAge.frag.glsl'
 
 // const defaultRampColors = {
 //     0.0: 'rgba(44,123,182,0.5)',    // blue
@@ -23,14 +23,14 @@ import updatePropFrag from './shaders/updateProp.frag.glsl'
 //     1.0: 'rgba(215,25,28,1)',     // red
 // };
 
-// const defaultRampColors = {
-//     0.0: 'rgba(250,250,250,0.3)', // transparent
-//     1.0: 'rgba(250,250,250,0.8)', // transparent
-// };
 const defaultRampColors = {
-    0.0: 'rgba(250,250,250,1)', // transparent
-    1.0: 'rgba(250,250,250,1)', // transparent
-};
+    0.0: 'rgba(250,250,250,0.3)', // transparent
+    1.0: 'rgba(250,250,250,0.9)', // transparent
+}
+// const defaultRampColors = {
+//     0.0: 'rgba(250,250,250,1)', // transparent
+//     1.0: 'rgba(250,250,250,1)', // transparent
+// };
 
 export default class WindGL {
     gl: WebGLRenderingContext
@@ -39,8 +39,8 @@ export default class WindGL {
     dropRate = 0.009; // how fast the particle will die off
     minSpeedColor = 1.0; // minimum color velocity
     maxSpeedColor = 15.0; // maximum color velocity
-    private _particleLength: number = 3; // length of a particle with its tail
-    private _particlesPerPixel: number = 0.02
+    private _particleLength: number = 50; // length of a particle with its tail
+    private _pointsPerPixel: number = 0.3
     private _programs: { [key: string]: any } = {}
     private _quadBuffer: any;
     private _framebuffer!: WebGLFramebuffer;
@@ -66,7 +66,7 @@ export default class WindGL {
         this._programs['draw'] = this._util.createProgram(drawVert, drawFrag);
         this._programs['screen'] = this._util.createProgram(quadVert, screenFrag);
         this._programs['update'] = this._util.createProgram(updateVert, updateFrag);
-        this._programs['updateProp'] = this._util.createProgram(quadVert, updatePropFrag)
+        this._programs['updateProp'] = this._util.createProgram(updateVert, updateAgeFrag)
 
         this._quadBuffer = this._util.createBuffer(new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
         this._colorRampTexture = this._util.createTexture(this.gl.LINEAR, getColorRamp(defaultRampColors), 16, 16);
@@ -77,24 +77,24 @@ export default class WindGL {
         this.reset();
     }
 
-    set particlesPerPixel(value: number) {
+    set pointsPerPixel(value: number) {
         value = Math.max(0.0, Math.min(1.0, value));
-        this._particlesPerPixel = value;
+        this._pointsPerPixel = value;
         this.reset();
     }
 
-    get particlesPerPixel(): number {
-        return this._particlesPerPixel;
+    get pointsPerPixel(): number {
+        return this._pointsPerPixel;
     }
 
     private _initParticles() {
-        const particlesPerPixel = this._particlesPerPixel;
+        const pointsPerPixel = this._pointsPerPixel;
         const gl = this.gl;
-        // const numParticles = Math.floor(particlesPerPixel * gl.canvas.width * gl.canvas.height);
-        const numParticles = 3;  // for testing purposes, we use a fixed number of particles
+        const numParticles = Math.min(Math.floor((pointsPerPixel * gl.canvas.width * gl.canvas.height) / this._particleLength), gl.getParameter(gl.MAX_TEXTURE_SIZE));
+        // const numParticles = 10;  // for testing purposes, we use a fixed number of particles
+        this._numParticles = numParticles;
         this._particleTexShape = [this._particleLength, numParticles]
         const particleRes = this._particleTexShape;
-        this._numParticles = numParticles;
         // two sets of rgba texture, first for position, second for properties
         const particleState = new Uint8Array(this._numPoints * 4);
         const particleProp = new Uint8Array(this._numPoints * 4);
@@ -113,6 +113,7 @@ export default class WindGL {
             gl.deleteTexture(this._particlePropTexture.write)
         }
 
+        console.log("Initializing particle textures with resolution:", particleRes)
         this._particlePosTexture = {
             read: this._util.createTexture(gl.NEAREST, particleState, particleRes[0], particleRes[1]),
             write: this._util.createTexture(gl.NEAREST, particleState, particleRes[0], particleRes[1])
@@ -299,7 +300,7 @@ export default class WindGL {
         const windTex = this._windTextures.textures[this._texIndex];
         gl.useProgram(program.program);
 
-        this._util.bindAttribute(this._particleIndexBuffer, program.a_index, 1);
+        this._util.bindAttribute(this._particleCoordBuffer, program.a_pos, 2);
 
         this._util.bindTexture(program.u_wind, windTex!)
         this._util.bindTexture(program.u_particles, this._particlePosTexture!.read)

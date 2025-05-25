@@ -55,7 +55,7 @@ void main() {
     vec2 random_pos = vec2(rand(seed + 1.3), rand(seed + 2.1));
 
     drop = max(drop, drop1);
-    pos = mix(pos, random_pos, drop);
+    pos = mix(pos, random_pos, drop * head);
 
     // encode the new particle position back into RGBA
     gl_FragColor = vec4(fract(pos * 255.0), floor(pos * 255.0) / 255.0);
