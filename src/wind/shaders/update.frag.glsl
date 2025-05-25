@@ -12,6 +12,8 @@ uniform vec2 u_wind_max;
 uniform float u_rand_seed;
 uniform float u_speed_factor;
 uniform float u_time_fac;
+uniform vec2 u_particles_res;
+
 varying vec2 v_tex_pos;
 
 // pseudo-random generator
@@ -24,6 +26,7 @@ float rand(const vec2 co) {
 #include "includes/lookup_wind.glsl"
 
 void main() {
+    float head = step(v_tex_pos.x, 1.0 / u_particles_res.x);
     vec4 color = texture2D(u_particles, v_tex_pos);
     vec2 pos = vec2(color.r / 255.0 + color.b, color.g / 255.0 + color.a); // decode particle position from pixel RGBA
     color = texture2D(u_particle_props, v_tex_pos);
@@ -38,7 +41,7 @@ void main() {
 
     // update particle position, wrapping around the date line
     // pos = fract(1.0 + pos + offset);
-    pos = pos + offset;
+    pos = pos + offset * head;
 
     float drop1 = step(1.0, abs(1. - 2. * pos.x));
     float drop2 = step(1.0, abs(1. - 2. * pos.y));

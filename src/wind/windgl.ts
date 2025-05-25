@@ -74,7 +74,6 @@ export default class WindGL {
         this._windData = windData;
         this._windTextures = new WindTexture(windData, gl);
 
-        // we create a square texture where each pixel will hold a particle position encoded as RGBA
         this.reset();
     }
 
@@ -283,38 +282,12 @@ export default class WindGL {
         gl.uniform2f(program.u_particles_res, this._particleTexShape[0], this._particleTexShape[1]);
         gl.drawArrays(gl.POINTS, 0, this._numPoints);
         // swap the read and write textures
-        console.log("read:", this.readUint8Texture(this._particlePosTexture!.read, this._particleTexShape[0], this._particleTexShape[1]));
-        console.log("write:", this.readUint8Texture(this._particlePosTexture!.write, this._particleTexShape[0], this._particleTexShape[1]));
+        // console.log("read:", this.readUint8Texture(this._particlePosTexture!.read, this._particleTexShape[0], this._particleTexShape[1]));
+        // console.log("write:", this.readUint8Texture(this._particlePosTexture!.write, this._particleTexShape[0], this._particleTexShape[1]));
         this._particlePosTexture = {
             read: this._particlePosTexture!.write,
             write: this._particlePosTexture!.read
         };
-    }
-
-    private readUint8Texture(texture: WebGLTexture, width: number, height: number) {
-        const gl = this.gl;
-        const framebuffer = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-
-        const pixels = new Uint8Array(width * height * 4); // RGBA
-
-        gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.deleteFramebuffer(framebuffer);
-
-        // decode positions from RGBA to XY coordinates
-        // vec2(color.r / 255.0 + color.b, color.g / 255.0 + color.a)
-        let pos = []
-        for (let i = 0; i < pixels.length; i += 4) {
-            const r = pixels[i]! / 255.0 / 255.0; // normalize to [0, 1]
-            const g = pixels[i + 1]! / 255.0 / 255.0; // normalize to [0, 1]
-            const b = pixels[i + 2]! / 255.0;
-            const a = pixels[i + 3]! / 255.0;
-            pos.push([r + b, g + a]);
-        }
-        return pos;
     }
 
     private _updateParticleProp() {
@@ -349,6 +322,33 @@ export default class WindGL {
             write: this._particlePropTexture!.read
         };
     }
+
+    private readUint8Texture(texture: WebGLTexture, width: number, height: number) {
+        const gl = this.gl;
+        const framebuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+
+        const pixels = new Uint8Array(width * height * 4); // RGBA
+
+        gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.deleteFramebuffer(framebuffer);
+
+        // decode positions from RGBA to XY coordinates
+        // vec2(color.r / 255.0 + color.b, color.g / 255.0 + color.a)
+        let pos = []
+        for (let i = 0; i < pixels.length; i += 4) {
+            const r = pixels[i]! / 255.0 / 255.0; // normalize to [0, 1]
+            const g = pixels[i + 1]! / 255.0 / 255.0; // normalize to [0, 1]
+            const b = pixels[i + 2]! / 255.0;
+            const a = pixels[i + 3]! / 255.0;
+            pos.push([r + b, g + a]);
+        }
+        return pos;
+    }
+
 }
 
 function getColorRamp(colors: { [x: string]: string; }) {
