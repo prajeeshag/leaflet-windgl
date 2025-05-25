@@ -62,7 +62,7 @@ const windData = new WindData(
     tempData,
     tempData,
     [0, -10],
-    [0, 0],
+    [0, 10],
     uArr.shape[2],
     uArr.shape[1],
     uArr.shape[0],

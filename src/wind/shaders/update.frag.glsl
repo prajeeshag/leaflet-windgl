@@ -47,17 +47,14 @@ void main() {
     // pos = fract(1.0 + pos + offset);
     pos = pos + offset * head;
 
-    // float drop1 = step(1.0, abs(1. - 2. * pos.x));
-    // float drop2 = step(1.0, abs(1. - 2. * pos.y));
-    // drop1 = max(drop1, drop2);
+    pos = clamp(pos, 0.0, 1.0); // clamp position to [0, 1] range
 
     // a random seed to use for the particle drop
     vec2 seed = (pos + v_tex_pos) * u_rand_seed;
-    // float drop = step(1.0, age); // 1 <= age drop = 1.0 
+
     float drop = floor(age);
     vec2 random_pos = vec2(rand(seed + 1.3), rand(seed + 2.1));
 
-    // drop = max(drop, drop1);
     pos = mix(pos, random_pos, drop * head);
 
     // encode the new particle position back into RGBA

@@ -25,6 +25,10 @@ void main() {
     vec4 color = texture2D(u_particles, shift_pos);
     vec2 pos = vec2(color.r / 255.0 + color.b, color.g / 255.0 + color.a);
 
+    float drop1 = step(1.0, abs(1. - 2. * pos.x));
+    float drop2 = step(1.0, abs(1. - 2. * pos.y));
+    drop1 = max(drop1, drop2);
+
     vec2 velocity = mix(u_wind_min, u_wind_max, lookup_wind(pos));
     float speed_age = 1. - smoothstep(0.0, 0.5, length(velocity));
 
@@ -34,6 +38,7 @@ void main() {
 
     age = mod(age, 1.0); // incoming age 1.0 means it jumped to a random position, set it to 0.0
     age = age + (u_drop_rate * speed_age + u_drop_rate) * head * u_updateAge; // add age based on speed
+    age = mix(age, 1.0, drop1); // if particle is out of bounds, set age to 1.0
     age = min(age, 1.0); // clamp age to 1.0, if age is 1.0 it will jump to new position
 
     vec2 age_encoded = vec2(floor(age * 255.0) / 255.0, fract(age * 255.0));
