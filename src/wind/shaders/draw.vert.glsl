@@ -1,6 +1,6 @@
 #version 100
 precision mediump float;
-attribute float a_index;
+attribute vec2 a_index;
 
 uniform vec2 u_particles_res;
 uniform sampler2D u_particles;
@@ -8,6 +8,7 @@ uniform sampler2D u_particle_props;
 
 varying vec2 v_particle_pos;
 varying float v_particle_age;
+varying float v_valid;
 
 vec2 getParticlePos(const vec2 coord) {
     vec4 color = texture2D(u_particles, coord);
@@ -20,9 +21,15 @@ float getParticleAge(const vec2 coord) {
 }
 
 void main() {
-    vec2 coord = vec2(fract(a_index / u_particles_res.x), floor(a_index / u_particles_res.x) / u_particles_res.y);
-    v_particle_pos = getParticlePos(coord);
-    v_particle_age = getParticleAge(coord);
-    gl_PointSize = 1.;
+    vec2 tail_index = vec2(a_index.x + 1.0 / u_particles_res.x, a_index.y);
+    vec2 head_index = vec2(a_index.x - 1.0 / u_particles_res.x, a_index.y);
+    v_particle_pos = getParticlePos(a_index);
+    vec2 tail_particle_pos = getParticlePos(tail_index);
+
+    v_particle_age = getParticleAge(a_index);
+    float tail_particle_age = getParticleAge(tail_index);
+    float alive = step(tail_particle_age, v_particle_age);
+    v_valid = alive; 
+    // gl_PointSize = 1.0;
     gl_Position = vec4(2.0 * v_particle_pos.x - 1.0, 1.0 - 2.0 * v_particle_pos.y, 0.0, 1.0);
 }

@@ -28,10 +28,13 @@ float rand(const vec2 co) {
 void main() {
     float head = step(v_tex_pos.x, 1.0 / u_particles_res.x);
     vec2 shift_pos = vec2(v_tex_pos.x - 1.0 / u_particles_res.x, v_tex_pos.y);
+
     vec4 color = texture2D(u_particles, shift_pos);
     vec2 pos = vec2(color.r / 255.0 + color.b, color.g / 255.0 + color.a); // decode particle position from pixel RGBA
+
     color = texture2D(u_particle_props, v_tex_pos);
     float age = color.r + color.g / 255.0;
+
     vec2 velocity = mix(u_wind_min, u_wind_max, lookup_wind(pos));
     float speed_t = length(velocity) / length(u_wind_max);
 
@@ -44,17 +47,17 @@ void main() {
     // pos = fract(1.0 + pos + offset);
     pos = pos + offset * head;
 
-    float drop1 = step(1.0, abs(1. - 2. * pos.x));
-    float drop2 = step(1.0, abs(1. - 2. * pos.y));
-    drop1 = max(drop1, drop2);
+    // float drop1 = step(1.0, abs(1. - 2. * pos.x));
+    // float drop2 = step(1.0, abs(1. - 2. * pos.y));
+    // drop1 = max(drop1, drop2);
 
     // a random seed to use for the particle drop
     vec2 seed = (pos + v_tex_pos) * u_rand_seed;
-    float drop = step(1.0, age); // 1 <= age drop = 1.0 
-
+    // float drop = step(1.0, age); // 1 <= age drop = 1.0 
+    float drop = floor(age);
     vec2 random_pos = vec2(rand(seed + 1.3), rand(seed + 2.1));
 
-    drop = max(drop, drop1);
+    // drop = max(drop, drop1);
     pos = mix(pos, random_pos, drop * head);
 
     // encode the new particle position back into RGBA

@@ -13,6 +13,7 @@ uniform float u_wind_spd_max;
 
 varying vec2 v_particle_pos;
 varying float v_particle_age;
+varying float v_valid;
 
 #include "includes/lookup_wind.glsl"
 
@@ -25,5 +26,5 @@ void main() {
     vec2 ramp_pos = vec2(fract(16.0 * speed_t), floor(16.0 * speed_t) / 16.0);
 
     vec4 color = texture2D(u_color_ramp, ramp_pos);
-    gl_FragColor = vec4(color);
+    gl_FragColor = vec4(color.rgb, color.a * (1.0 - v_particle_age)) * v_valid; // use age as alpha
 }
