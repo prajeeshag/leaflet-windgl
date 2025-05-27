@@ -9,7 +9,7 @@ import quadVert from './shaders/quad.vert.glsl';
 import screenFrag from './shaders/screen.frag.glsl';
 
 import updateVert from './shaders/update.vert.glsl';
-import updateFrag from './shaders/update.frag.glsl';
+import updatePosFrag from './shaders/updatePos.frag.glsl';
 import updateAgeFrag from './shaders/updateAge.frag.glsl'
 
 // const defaultRampColors = {
@@ -23,53 +23,52 @@ import updateAgeFrag from './shaders/updateAge.frag.glsl'
 //     1.0: 'rgba(215,25,28,1)',     // red
 // };
 
-const defaultRampColors = {
-    0.0: 'rgba(250,250,250,0.7)', // transparent
-    1.0: 'rgba(250,250,250,0.99)', // transparent
-}
-
 // const defaultRampColors = {
-//     0.0: 'rgba(250,250,250,1)', // transparent
-//     1.0: 'rgba(250,250,250,1)', // transparent
-// };
+//     0.0: 'rgba(250,250,250,0.7)', // transparent
+//     1.0: 'rgba(250,250,250,0.99)', // transparent
+// }
+
+const defaultRampColors = {
+    0.0: 'rgba(250,250,250,1)', // transparent
+    1.0: 'rgba(250,250,250,1)', // transparent
+};
 
 export default class WindGL {
     gl: WebGLRenderingContext
     fadeOpacity = 0.0; // how fast the particle trails fade on each frame
-    speedFactor = 1.9; // how fast the particles move
-    dropRate = 0.09; // how fast the particle will die off
+    speedFactor = 0.8; // how fast the particles move
+    dropRate = 0.1; // how fast the particle will die off
     minSpeedColor = 1.0; // minimum color velocity
     maxSpeedColor = 15.0; // maximum color velocity
     private _particleLength: number = 50; // length of a particle with its tail
-    private _pointsPerPixel: number = 0.3
+    private _pointsPerPixel: number = 0.5
     private _programs: { [key: string]: any } = {}
     private _quadBuffer: any;
     private _framebuffer!: WebGLFramebuffer;
     private _screenTexture!: [WebGLTexture, WebGLTexture];
     private _colorRampTexture: WebGLTexture;
-    private _particleTexShape!: [number, number];
+    private _particleTexRes!: [number, number];
     private _numParticles!: number;
-    private _particlePosTexture: { read: WebGLTexture, write: WebGLTexture } | null = null; // this will hold the particle positions
-    private _particlePropTexture: { read: WebGLTexture, write: WebGLTexture } | null = null; // this will hold the particle properties (e.g. age)
-    private _particleIndexBuffer!: WebGLBuffer;
+    private _particlePosTex: { read: WebGLTexture, write: WebGLTexture } | null = null; // this will hold the particle positions
+    private _particleAgeTex: { read: WebGLTexture, write: WebGLTexture } | null = null; // this will hold the particle properties (e.g. age)
     private _particleCoordBuffer!: WebGLBuffer; // this will hold the particle coordinates
     private _windTextures: WindTexture
     private _windData: WindData;
     private _util: Util;
-    private _timeFactor: number = 0.0;
+    private _timeFac: number = 0.0;
     private _texIndex: number = 0;
     private _canvasOrigin: [number, number] = [0, 0]; //[x0,y0] canvas position relative to the wind data grid all normalized to [0,1]
     private _canvasSize: [number, number] = [0, 0]; //[x0,y0] canvas size relative to the wind data grid all normalized to [0,1]
-    private _propUpdateCount: number = 0;
     private _lineCoordBuffer!: WebGLBuffer;
+    private _lineRoleBuffer!: WebGLBuffer;
 
     constructor(gl: WebGLRenderingContext, windData: WindData) {
         this.gl = gl;
         this._util = new Util(gl);
         this._programs['draw'] = this._util.createProgram(drawVert, drawFrag);
         this._programs['screen'] = this._util.createProgram(quadVert, screenFrag);
-        this._programs['update'] = this._util.createProgram(updateVert, updateFrag);
-        this._programs['updateProp'] = this._util.createProgram(updateVert, updateAgeFrag)
+        this._programs['updatePos'] = this._util.createProgram(updateVert, updatePosFrag);
+        this._programs['updateAge'] = this._util.createProgram(updateVert, updateAgeFrag)
 
         this._quadBuffer = this._util.createBuffer(new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
         this._colorRampTexture = this._util.createTexture(this.gl.LINEAR, getColorRamp(defaultRampColors), 16, 16);
@@ -94,60 +93,50 @@ export default class WindGL {
         const pointsPerPixel = this._pointsPerPixel;
         const gl = this.gl;
         // const numParticles = Math.min(Math.floor((pointsPerPixel * gl.canvas.width * gl.canvas.height) / this._particleLength), gl.getParameter(gl.MAX_TEXTURE_SIZE));
-        const numParticles = 10;  // for testing purposes, we use a fixed number of particles
+        const numParticles = 1;  // for testing purposes, we use a fixed number of particles
         this._numParticles = numParticles;
-        this._particleTexShape = [this._particleLength, numParticles]
-        const particleRes = this._particleTexShape;
-        const width = this._particleTexShape[0];
-        const height = this._particleTexShape[1];
+        this._particleTexRes = [this._particleLength, numParticles]
+        const particleRes = this._particleTexRes;
+        const width = this._particleTexRes[0];
+        const height = this._particleTexRes[1];
         // two sets of rgba texture, first for position, second for properties
-        const particleState = new Uint8Array(this._numPoints() * 4);
-        const particleProp = new Uint8Array(this._numPoints() * 4);
+        const particlePos = new Uint8Array(this._numPoints() * 4);
+        const particleAge = new Uint8Array(this._numPoints() * 4); // age, ageUpdateCounter
 
-        for (let i = 0; i < particleState.length; i++) {
-            particleState[i] = Math.floor(Math.random() * 256); // randomize the initial particle positions
-            particleProp[i] = Math.floor(Math.random() * 255); // initial particle age
-            // particleProp[i] = Math.floor(Math.random() * 255); // initial particle age
-        }
-        // const pos = new Uint8Array(4)
-        // const age = new Uint8Array(4)
-        // for (let j = 0; j < height; j++) {
-        //     for (let k = 0; k < 4; k++) {
-        //         pos[k] = Math.floor(Math.random() * 256.);
-        //         age[k] = Math.floor(Math.random() * 128.);
-        //     }
-        //     for (let i = 0; i < width; i++) {
-        //         for (let k = 0; k < 4; k++) {
-        //             particleState[j * width + i * 4 + k] = pos[k]!
-        //             particleProp[j * width + i * 4 + k] = age[k]!
-        //         }
-        //     }
-        // }
-
-        if (this._particlePosTexture !== null) {
-            gl.deleteTexture(this._particlePosTexture.read)
-            gl.deleteTexture(this._particlePosTexture.write)
-        }
-        if (this._particlePropTexture !== null) {
-            gl.deleteTexture(this._particlePropTexture.read)
-            gl.deleteTexture(this._particlePropTexture.write)
+        const pos = new Uint8Array(4)
+        const age = new Uint8Array(4)
+        for (let j = 0; j < height; j++) {
+            for (let k = 0; k < 4; k++) {
+                pos[k] = Math.floor(Math.random() * 256.);
+                age[k] = Math.floor((Math.random() + 0.01) * 256.); // hack to avoid zero age at initial time
+            }
+            for (let i = 0; i < width; i++) {
+                for (let k = 0; k < 4; k++) {
+                    particlePos[(j * width + i) * 4 + k] = pos[k]!
+                    // particlePos[(j * width + i) * 4 + k] = Math.floor(Math.random() * 256.);
+                    // particleAge[(j * width + i) * 4 + k] = age[k]!
+                    particleAge[(j * width + i) * 4 + k] = Math.floor(0.01 * 256)
+                }
+            }
         }
 
-        this._particlePosTexture = {
-            read: this._util.createTexture(gl.NEAREST, particleState, particleRes[0], particleRes[1]),
-            write: this._util.createTexture(gl.NEAREST, particleState, particleRes[0], particleRes[1])
+        if (this._particlePosTex !== null) {
+            gl.deleteTexture(this._particlePosTex.read)
+            gl.deleteTexture(this._particlePosTex.write)
         }
-        this._particlePropTexture = {
-            read: this._util.createTexture(gl.NEAREST, particleProp, particleRes[0], particleRes[1]),
-            write: this._util.createTexture(gl.NEAREST, particleProp, particleRes[0], particleRes[1]),
+        if (this._particleAgeTex !== null) {
+            gl.deleteTexture(this._particleAgeTex.read)
+            gl.deleteTexture(this._particleAgeTex.write)
         }
 
-        const pointIndices = new Float32Array(this._numPoints());
-        for (let i = 0; i < this._numPoints(); i++) pointIndices[i] = i;
-        if (this._particleIndexBuffer) {
-            gl.deleteBuffer(this._particleIndexBuffer);
+        this._particlePosTex = {
+            read: this._util.createTexture(gl.NEAREST, particlePos, particleRes[0], particleRes[1]),
+            write: this._util.createTexture(gl.NEAREST, particlePos, particleRes[0], particleRes[1])
         }
-        this._particleIndexBuffer = this._util.createBuffer(pointIndices);
+        this._particleAgeTex = {
+            read: this._util.createTexture(gl.NEAREST, particleAge, particleRes[0], particleRes[1]),
+            write: this._util.createTexture(gl.NEAREST, particleAge, particleRes[0], particleRes[1])
+        }
 
         const particleCount = width * height;
         const a_pos = new Float32Array(particleCount * 2);
@@ -165,6 +154,7 @@ export default class WindGL {
 
         const lineCount = (width - 1) * height;
         const l_pos = new Float32Array(lineCount * 2 * 2);
+        const l_role = new Float32Array(lineCount * 2);
         i = 0;
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width - 1; x++) {
@@ -174,10 +164,22 @@ export default class WindGL {
                 l_pos[i++] = (y + 0.5) / height; // center of texel in Y
             }
         }
+
+        i = 0;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width - 1; x++) {
+                l_role[i++] = 1; // first point in segment 
+                l_role[i++] = 0; // second point in segment
+            }
+        }
         if (this._lineCoordBuffer) {
             gl.deleteBuffer(this._lineCoordBuffer);
         }
         this._lineCoordBuffer = this._util.createBuffer(l_pos);
+        if (this._lineRoleBuffer) {
+            gl.deleteBuffer(this._lineRoleBuffer);
+        }
+        this._lineRoleBuffer = this._util.createBuffer(l_role);
     }
 
     private _initScreenTexture() {
@@ -219,12 +221,12 @@ export default class WindGL {
     draw(timeStep: number) {
         var dt = Math.min(Math.max(0.0, Math.min(0.99999, timeStep)) * this._windTextures.ntex, this._windTextures.ntex);
         this._texIndex = Math.floor(dt);
-        this._timeFactor = dt - this._texIndex;
+        this._timeFac = dt - this._texIndex;
         const gl = this.gl;
         gl.disable(gl.DEPTH_TEST);
         gl.disable(gl.STENCIL_TEST);
         this._drawScreen();
-        this._updateParticleProp();
+        this._updateParticleAge();
         this._updateParticlePos();
     }
 
@@ -252,17 +254,9 @@ export default class WindGL {
         const gl = this.gl;
         const program = this._programs.screen;
         gl.useProgram(program.program);
-        const windTex = this._windTextures.textures[this._texIndex];
-        gl.uniform1f(program.u_time_fac, this._timeFactor);
-        gl.uniform2f(program.u_wind_res, this._windData.width, this._windData.height);
-        gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
-        gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
-
-        this._util.bindTexture(program.u_wind, windTex!)
         this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
         this._util.bindTexture(program.u_screen, texture)
         gl.uniform1f(program.u_opacity, opacity);
-
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
@@ -271,102 +265,94 @@ export default class WindGL {
         const program = this._programs.draw;
         gl.useProgram(program.program);
         const windTex = this._windTextures.textures[this._texIndex];
-        // this._util.bindAttribute(this._particleIndexBuffer, program.a_index, 1);
         this._util.bindAttribute(this._lineCoordBuffer, program.a_index, 2);
+        this._util.bindAttribute(this._lineRoleBuffer, program.a_role, 1);
 
-        this._util.bindTexture(program.u_wind, windTex!)
-        gl.uniform1f(program.u_time_fac, this._timeFactor);
-        gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
-        gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
-        gl.uniform2f(program.u_particles_res, this._particleTexShape[0], this._particleTexShape[1]);
-        gl.uniform2f(program.u_wind_min, this._windData.uMin, this._windData.vMin);
-        gl.uniform2f(program.u_wind_max, this._windData.uMax, this._windData.vMax);
-        gl.uniform1f(program.u_wind_spd_min, this.minSpeedColor);
-        gl.uniform1f(program.u_wind_spd_max, this.maxSpeedColor);
-        this._util.bindTexture(program.u_color_ramp, this._colorRampTexture)
+        this._util.bindTexture(program.u_windTex, windTex!)
+        gl.uniform1f(program.u_timeFac, this._timeFac);
+        gl.uniform2f(program.u_canvasOrigin, this._canvasOrigin[0], this._canvasOrigin[1]);
+        gl.uniform2f(program.u_canvasSize, this._canvasSize[0], this._canvasSize[1]);
+        gl.uniform2f(program.u_particleTexRes, this._particleTexRes[0], this._particleTexRes[1]);
+        gl.uniform2f(program.u_windMin, this._windData.uMin, this._windData.vMin);
+        gl.uniform2f(program.u_windMax, this._windData.uMax, this._windData.vMax);
+        gl.uniform1f(program.u_windSpdMin, this.minSpeedColor);
+        gl.uniform1f(program.u_windSpdMax, this.maxSpeedColor);
+        this._util.bindTexture(program.u_colorRamp, this._colorRampTexture)
+
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        if (!this._particlePosTexture || !this._particlePropTexture) {
+        if (!this._particlePosTex || !this._particleAgeTex) {
             throw new Error('Particle textures not initialized');
         }
-        this._util.bindTexture(program.u_particles, this._particlePosTexture.read);
-        this._util.bindTexture(program.u_particle_props, this._particlePropTexture.read);
+        this._util.bindTexture(program.u_particlePosTex, this._particlePosTex.read);
+        this._util.bindTexture(program.u_particleAgeTex, this._particleAgeTex.read);
         gl.drawArrays(gl.LINES, 0, this._numSegments());
         gl.disable(gl.BLEND);
     }
 
     private _updateParticlePos() {
         const gl = this.gl;
-        this._util.bindFramebuffer(this._framebuffer, this._particlePosTexture!.write);
-        gl.viewport(0, 0, this._particleTexShape[0], this._particleTexShape[1]);
+        this._util.bindFramebuffer(this._framebuffer, this._particlePosTex!.write);
+        gl.viewport(0, 0, this._particleTexRes[0], this._particleTexRes[1]);
 
-        const program = this._programs.update;
+        const program = this._programs.updatePos;
         const windTex = this._windTextures.textures[this._texIndex];
         if (!windTex) {
             throw new Error('Wind texture not found');
         }
         gl.useProgram(program.program);
         this._util.bindAttribute(this._particleCoordBuffer, program.a_pos, 2);
-        this._util.bindTexture(program.u_wind, windTex)
-        this._util.bindTexture(program.u_particles, this._particlePosTexture!.read)
-        this._util.bindTexture(program.u_particle_props, this._particlePropTexture!.read)
+        this._util.bindTexture(program.u_windTex, windTex)
+        this._util.bindTexture(program.u_particlePosTex, this._particlePosTex!.read)
+        this._util.bindTexture(program.u_particleAgeTex, this._particleAgeTex!.read)
 
-        gl.uniform1f(program.u_time_fac, this._timeFactor);
-        gl.uniform1f(program.u_rand_seed, Math.random());
-        gl.uniform2f(program.u_wind_res, this._windData.width, this._windData.height);
-        gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
-        gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
-        gl.uniform2f(program.u_wind_min, this._windData.uMin, this._windData.vMin);
-        gl.uniform2f(program.u_wind_max, this._windData.uMax, this._windData.vMax);
-        gl.uniform1f(program.u_speed_factor, this.speedFactor);
-        gl.uniform2f(program.u_particles_res, this._particleTexShape[0], this._particleTexShape[1]);
+        gl.uniform1f(program.u_timeFac, this._timeFac);
+        gl.uniform1f(program.u_randSeed, Math.random());
+        gl.uniform2f(program.u_windRes, this._windData.width, this._windData.height);
+        gl.uniform2f(program.u_canvasOrigin, this._canvasOrigin[0], this._canvasOrigin[1]);
+        gl.uniform2f(program.u_canvasSize, this._canvasSize[0], this._canvasSize[1]);
+        gl.uniform2f(program.u_windMin, this._windData.uMin, this._windData.vMin);
+        gl.uniform2f(program.u_windMax, this._windData.uMax, this._windData.vMax);
+        gl.uniform1f(program.u_speedFactor, this.speedFactor);
+        gl.uniform2f(program.u_particleTexRes, this._particleTexRes[0], this._particleTexRes[1]);
         gl.drawArrays(gl.POINTS, 0, this._numPoints());
-        // swap the read and write textures
-        // console.log("read:", this.readUint8Texture(this._particlePosTexture!.read, this._particleTexShape[0], this._particleTexShape[1]));
-        // console.log("write:", this.readUint8Texture(this._particlePosTexture!.write, this._particleTexShape[0], this._particleTexShape[1]));
-        this._particlePosTexture = {
-            read: this._particlePosTexture!.write,
-            write: this._particlePosTexture!.read
+        this._particlePosTex = {
+            read: this._particlePosTex!.write,
+            write: this._particlePosTex!.read
         };
     }
 
-    private _updateParticleProp() {
+    private _updateParticleAge() {
         const gl = this.gl;
-        this._propUpdateCount += 1.0;
-        var updateAge = 0.0
-        if (this._propUpdateCount % this._particleLength === 0.) {
-            updateAge = 1.0
-            this._propUpdateCount = 0;
-        }
-        this._util.bindFramebuffer(this._framebuffer, this._particlePropTexture!.write);
-        gl.viewport(0, 0, this._particleTexShape[0], this._particleTexShape[1]);
+        this._util.bindFramebuffer(this._framebuffer, this._particleAgeTex!.write);
+        gl.viewport(0, 0, this._particleTexRes[0], this._particleTexRes[1]);
 
-        const program = this._programs.updateProp;
+        const program = this._programs.updateAge;
         const windTex = this._windTextures.textures[this._texIndex];
         gl.useProgram(program.program);
 
         this._util.bindAttribute(this._particleCoordBuffer, program.a_pos, 2);
-
-        this._util.bindTexture(program.u_wind, windTex!)
-        this._util.bindTexture(program.u_particles, this._particlePosTexture!.read)
-        this._util.bindTexture(program.u_particle_props, this._particlePropTexture!.read)
-        gl.uniform1f(program.u_time_fac, this._timeFactor);
-        gl.uniform2f(program.u_wind_res, this._windData.width, this._windData.height);
-        gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
-        gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
-        gl.uniform2f(program.u_wind_min, this._windData.uMin, this._windData.vMin);
-        gl.uniform2f(program.u_wind_max, this._windData.uMax, this._windData.vMax);
-        gl.uniform1f(program.u_wind_speed_min, this._windData.uMin);
-        gl.uniform1f(program.u_wind_speed_max, this._windData.uMax);
-        gl.uniform2f(program.u_particles_res, this._particleTexShape[0], this._particleTexShape[1]);
-        gl.uniform1f(program.u_drop_rate, this.dropRate);
-        gl.uniform1f(program.u_updateAge, updateAge);
+        this._util.bindTexture(program.u_windTex, windTex!)
+        this._util.bindTexture(program.u_particlePosTex, this._particlePosTex!.read)
+        this._util.bindTexture(program.u_particleAgeTex, this._particleAgeTex!.read)
+        gl.uniform1f(program.u_timeFac, this._timeFac);
+        gl.uniform2f(program.u_windRes, this._windData.width, this._windData.height);
+        gl.uniform2f(program.u_canvasOrigin, this._canvasOrigin[0], this._canvasOrigin[1]);
+        gl.uniform2f(program.u_canvasSize, this._canvasSize[0], this._canvasSize[1]);
+        gl.uniform2f(program.u_windMin, this._windData.uMin, this._windData.vMin);
+        gl.uniform2f(program.u_windMax, this._windData.uMax, this._windData.vMax);
+        gl.uniform1f(program.u_windSpeedMin, this._windData.uMin);
+        gl.uniform1f(program.u_windSpeedMax, this._windData.uMax);
+        gl.uniform2f(program.u_particleTexRes, this._particleTexRes[0], this._particleTexRes[1]);
+        gl.uniform1f(program.u_particleLength, this._particleLength)
+        gl.uniform1f(program.u_dropRate, this.dropRate);
+        gl.uniform1f(program.u_speedFactor, this.speedFactor);
 
         gl.drawArrays(gl.POINTS, 0, this._numPoints());
         // swap the read and write textures
-        this._particlePropTexture = {
-            read: this._particlePropTexture!.write,
-            write: this._particlePropTexture!.read
+        this._particleAgeTex = {
+            read: this._particleAgeTex!.write,
+            write: this._particleAgeTex!.read
         };
     }
 
