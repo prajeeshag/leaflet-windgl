@@ -8,5 +8,5 @@ varying vec2 v_tex_pos;
 
 void main() {
     vec4 color = texture2D(u_screen, 1. - v_tex_pos);
-    gl_FragColor = vec4(color * u_opacity);
+    gl_FragColor = vec4(color.rgb, color.a * u_opacity);
 }

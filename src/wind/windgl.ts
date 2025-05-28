@@ -12,21 +12,21 @@ import updateVert from './shaders/update.vert.glsl';
 import updatePosFrag from './shaders/updatePos.frag.glsl';
 import updateAgeFrag from './shaders/updateAge.frag.glsl'
 
-// const defaultRampColors = {
-//     0.0: 'rgba(44,123,182,0.5)',    // blue
-//     0.1: 'rgba(0,166,202,0.7)',     // cyan
-//     0.2: 'rgba(0,204,188,0.8)',     // teal
-//     0.3: 'rgba(144,235,157,0.8)',   // light green
-//     0.5: 'rgba(255,255,140,0.9)',   // yellow
-//     0.7: 'rgba(249,208,87,1)',    // orange
-//     0.8: 'rgba(242,158,46,1)',    // orange-brown
-//     1.0: 'rgba(215,25,28,1)',     // red
-// };
-
 const defaultRampColors = {
-    0.0: 'rgba(250,250,250,0.1)', // transparent
-    1.0: 'rgba(250,250,250,0.7)', // transparent
-}
+    0.0: 'rgba(44,123,182,0.2)',    // blue
+    0.1: 'rgba(0,166,202,0.2)',     // cyan
+    0.2: 'rgba(0,204,188,0.5)',     // teal
+    0.3: 'rgba(144,235,157,0.5)',   // light green
+    0.5: 'rgba(255,255,140,0.5)',   // yellow
+    0.7: 'rgba(249,208,87,0.7)',    // orange
+    0.8: 'rgba(242,158,46,0.7)',    // orange-brown
+    1.0: 'rgba(215,25,28,0.7)',     // red
+};
+
+// const defaultRampColors = {
+//     0.0: 'rgba(250,250,250,0.1)', // transparent
+//     1.0: 'rgba(250,250,250,0.7)', // transparent
+// }
 
 // const defaultRampColors = {
 //     0.0: 'rgba(250,250,250,1)', // transparent
@@ -35,7 +35,7 @@ const defaultRampColors = {
 
 export default class WindGL {
     gl: WebGLRenderingContext
-    fadeOpacity = 0.997; // how fast the particle trails fade on each frame
+    fadeOpacity = 0.99; // how fast the particle trails fade on each frame
     speedFactor = 3.5; // how fast the particles move
     dropRate = 0.09; // how fast the particle will die off
     minSpeedColor = 1.0; // minimum color velocity
@@ -218,7 +218,7 @@ export default class WindGL {
         this._texIndex = Math.floor(dt);
         const prevTimeFac = this._timeFac;
         this._timeFac = dt - this._texIndex;
-        this._currentOpacity = this.fadeOpacity * (this._timeFac !== prevTimeFac ? 0.996 : 1.0);
+        this._currentOpacity = this.fadeOpacity * (this._timeFac !== prevTimeFac ? 0.99 : 1.0);
         const gl = this.gl;
         gl.disable(gl.DEPTH_TEST);
         gl.disable(gl.STENCIL_TEST);
