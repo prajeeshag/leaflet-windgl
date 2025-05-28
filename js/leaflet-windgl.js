@@ -107,7 +107,9 @@ var drawFrag = "#version 100\nprecision mediump float;uniform sampler2D u_windTe
 
 var quadVert = "#version 100\nprecision mediump float;attribute vec2 a_pos;varying vec2 v_tex_pos;void main(){v_tex_pos=a_pos;gl_Position=vec4(1.0-2.0*a_pos,0,1);}"; // eslint-disable-line
 
-var screenFrag = "#version 100\nprecision mediump float;uniform sampler2D u_screen;uniform float u_opacity;varying vec2 v_tex_pos;void main(){vec4 color=texture2D(u_screen,1.-v_tex_pos);gl_FragColor=vec4(color.rgb,color.a*u_opacity);}"; // eslint-disable-line
+var screenFrag = "#version 100\nprecision mediump float;uniform sampler2D u_screen;uniform float u_opacity;uniform vec2 u_canvasSize;uniform vec2 u_canvasOrigin;uniform sampler2D u_windTex;uniform float u_timeFac;uniform vec2 u_windMin;uniform vec2 u_windMax;uniform float u_windSpdMin;uniform float u_windSpdMax;uniform sampler2D u_colorRamp;varying vec2 v_tex_pos;vec2 lookup_wind(const vec2 uv){vec2 uvc=u_canvasOrigin+uv*u_canvasSize;vec4 wind=texture2D(u_windTex,uvc);return mix(wind.rg,wind.ba,u_timeFac);}void main(){vec4 color=texture2D(u_screen,1.-v_tex_pos);gl_FragColor=vec4(color.rgb,color.a*u_opacity);}"; // eslint-disable-line
+
+var bgFrag = "#version 100\nprecision mediump float;uniform vec2 u_canvasSize;uniform vec2 u_canvasOrigin;uniform sampler2D u_windTex;uniform float u_timeFac;uniform vec2 u_windMin;uniform vec2 u_windMax;uniform float u_windSpdMin;uniform float u_windSpdMax;uniform sampler2D u_colorRamp;varying vec2 v_tex_pos;vec2 lookup_wind(const vec2 uv){vec2 uvc=u_canvasOrigin+uv*u_canvasSize;vec4 wind=texture2D(u_windTex,uvc);return mix(wind.rg,wind.ba,u_timeFac);}void main(){vec2 velocity=mix(u_windMin,u_windMax,lookup_wind(vec2(1.-v_tex_pos.x,v_tex_pos.y)));float speed_t=clamp((length(velocity)-u_windSpdMin)/(u_windSpdMax-u_windSpdMin),0.0,1.0);vec2 ramp_pos=vec2(fract(16.0*speed_t),floor(16.0*speed_t)/16.0);vec4 color=texture2D(u_colorRamp,ramp_pos);gl_FragColor=color;}"; // eslint-disable-line
 
 var updateVert = "#version 100\nprecision mediump float;attribute vec2 a_index;varying vec2 v_index;void main(){v_index=a_index;gl_PointSize=1.0;gl_Position=vec4(a_index*2.0-1.0,0.0,1.0);}"; // eslint-disable-line
 
@@ -115,17 +117,28 @@ var updatePosFrag = "#version 100\nprecision highp float;uniform sampler2D u_par
 
 var updateAgeFrag = "#version 100\nprecision highp float;uniform float u_particleLength;uniform float u_dropRate;uniform sampler2D u_particlePosTex;uniform sampler2D u_particleAgeTex;uniform sampler2D u_windTex;uniform vec2 u_windMin;uniform vec2 u_windMax;uniform vec2 u_windRes;uniform vec2 u_canvasOrigin;uniform vec2 u_canvasSize;uniform float u_randSeed;uniform float u_speedFactor;uniform float u_timeFac;uniform vec2 u_particleTexRes;varying vec2 v_index;vec2 lookup_wind(const vec2 uv){vec2 uvc=u_canvasOrigin+uv*u_canvasSize;vec4 wind=texture2D(u_windTex,uvc);return mix(wind.rg,wind.ba,u_timeFac);}const vec3 rand_constants=vec3(12.9898,78.233,4375.85453);float rand(const vec2 co){float t=dot(rand_constants.xy,co);return fract(sin(t)*(rand_constants.z+t));}vec2 getPos(const vec2 index){vec4 color=texture2D(u_particlePosTex,index);return vec2(color.r/255.0+color.b,color.g/255.0+color.a);}float getAge(const vec2 index){vec4 color=texture2D(u_particleAgeTex,index);return color.r+color.g/255.0;}float getAgeCounter(const vec2 index){vec4 color=texture2D(u_particleAgeTex,index);return color.b*255.0;}float isoutside(const vec2 pos){return min(step(1.0,abs(pos.x*2.-1.))+step(1.0,abs(pos.y*2.-1.)),1.0);}vec2 getRandPos(const vec2 pos,const vec2 index){vec2 seed=(pos+index)*u_randSeed;return vec2(rand(seed+1.3),rand(seed+2.1));}vec2 getVelocity(const vec2 pos){return mix(u_windMin,u_windMax,lookup_wind(pos));}vec2 getOffset(const vec2 pos){vec2 velocity=mix(u_windMin,u_windMax,lookup_wind(pos));return vec2(velocity.x,-velocity.y)*0.0001*u_speedFactor;}vec2 prevIndex(){return vec2(v_index.x-1.0/u_particleTexRes.x,v_index.y);}float ishead(){return step(v_index.x,1.0/u_particleTexRes.x);}void main(){float ageCounter=mod(floor(getAgeCounter(v_index)+1.),u_particleLength*0.9);float updateAge=1.-clamp(ageCounter,0.,1.);vec2 pos=getPos(v_index);vec2 pos1=pos+getOffset(v_index);float dropRate=mix(u_dropRate,1.-u_dropRate,isoutside(pos1));float age=getAge(v_index);float update0Age=floor(1.-fract(age));float prevAge=getAge(prevIndex());float age1=fract(min(age+dropRate,1.0));age1=mix(age,age1,min(updateAge+update0Age,1.0));age1=mix(prevAge,age1,ishead());vec2 age_encoded=vec2(floor(age1*255.0)/255.0,fract(age1*255.0));gl_FragColor=vec4(age_encoded,ageCounter/255.0,0.0);}"; // eslint-disable-line
 
-const defaultRampColors = {
-    0.0: 'rgba(44,123,182,0.2)', // blue
-    0.1: 'rgba(0,166,202,0.2)', // cyan
-    0.2: 'rgba(0,204,188,0.5)', // teal
-    0.3: 'rgba(144,235,157,0.5)', // light green
-    0.5: 'rgba(255,255,140,0.5)', // yellow
-    0.7: 'rgba(249,208,87,0.7)', // orange
-    0.8: 'rgba(242,158,46,0.7)', // orange-brown
-    1.0: 'rgba(215,25,28,0.7)', // red
+// const magnitudeColorRamp = {
+//     0.0: 'rgba(44,123,182,0.9)',    // blue
+//     0.1: 'rgba(0,166,202,0.9)',     // cyan
+//     0.2: 'rgba(0,204,188,0.9)',     // teal
+//     0.3: 'rgba(144,235,157,0.9)',   // light green
+//     0.5: 'rgba(255,255,140,0.9)',   // yellow
+//     0.7: 'rgba(249,208,87,0.9)',    // orange
+//     0.8: 'rgba(242,158,46,0.9)',    // orange-brown
+//     1.0: 'rgba(215,25,28,0.9)',     // red
+// };
+const magnitudeColorRamp = {
+    0.0: 'rgb(5, 77, 132)', // blue
+    0.25: 'rgb(4, 105, 33)', // blue
+    0.5: 'rgb(141, 159, 7)',
+    0.75: 'rgb(145, 113, 7)',
+    1.0: 'rgb(144, 55, 7)',
 };
-// const defaultRampColors = {
+const particleColorRamp = {
+    0.0: 'rgba(255, 255, 255, 0.4)', // transparent
+    1.0: 'rgba(255, 255, 255, 0.8)', // transparent
+};
+// const particleColorRamp = {
 //     0.0: 'rgba(250,250,250,0.1)', // transparent
 //     1.0: 'rgba(250,250,250,0.7)', // transparent
 // }
@@ -135,18 +148,20 @@ const defaultRampColors = {
 // };
 class WindGL {
     gl;
-    fadeOpacity = 0.99; // how fast the particle trails fade on each frame
-    speedFactor = 3.5; // how fast the particles move
-    dropRate = 0.09; // how fast the particle will die off
+    fadeOpacity = 0.98; // how fast the particle trails fade on each frame
+    speedFactor = 4.; // how fast the particles move
+    dropRate = 0.3; // how fast the particle will die off
     minSpeedColor = 1.0; // minimum color velocity
     maxSpeedColor = 15.0; // maximum color velocity
     _particleLength = 70; // length of a particle with its tail
-    _pointsPerPixel = 0.5;
+    _pointsPerPixel = 0.4;
     _programs = {};
     _quadBuffer;
     _framebuffer;
     _screenTexture;
+    _bgTexture;
     _colorRampTexture;
+    _colorRampTextureBg;
     _particleTexRes;
     _numParticles;
     _particlePosTex = null; // this will hold the particle positions
@@ -167,9 +182,11 @@ class WindGL {
         this._util = new glUtil(gl);
         this._programs['draw'] = this._util.createProgram(drawVert, drawFrag);
         this._programs['screen'] = this._util.createProgram(quadVert, screenFrag);
+        this._programs['bg'] = this._util.createProgram(quadVert, bgFrag);
         this._programs['updatePos'] = this._util.createProgram(updateVert, updatePosFrag);
         this._programs['updateAge'] = this._util.createProgram(updateVert, updateAgeFrag);
-        this._colorRampTexture = this._util.createTexture(this.gl.LINEAR, getColorRamp(defaultRampColors), 16, 16);
+        this._colorRampTexture = this._util.createTexture(this.gl.LINEAR, getColorRamp(particleColorRamp), 16, 16);
+        this._colorRampTextureBg = this._util.createTexture(this.gl.LINEAR, getColorRamp(magnitudeColorRamp), 16, 16);
         this._windData = windData;
         this._windTextures = new WindTexture(windData, gl);
         this.reset();
@@ -288,6 +305,10 @@ class WindGL {
             this._util.createTexture(gl.NEAREST, emptyPixels, gl.canvas.width, gl.canvas.height),
             this._util.createTexture(gl.NEAREST, emptyPixels, gl.canvas.width, gl.canvas.height)
         ];
+        if (this._bgTexture) {
+            gl.deleteTexture(this._bgTexture);
+        }
+        this._bgTexture = this._util.createTexture(gl.LINEAR, emptyPixels, gl.canvas.width, gl.canvas.height);
     }
     _numPoints() {
         return this._numParticles * this._particleLength;
@@ -300,7 +321,8 @@ class WindGL {
         this._texIndex = Math.floor(dt);
         const prevTimeFac = this._timeFac;
         this._timeFac = dt - this._texIndex;
-        this._currentOpacity = this.fadeOpacity * (this._timeFac !== prevTimeFac ? 0.99 : 1.0);
+        const isTimeMoving = this._timeFac !== prevTimeFac;
+        this._currentOpacity = this.fadeOpacity * (isTimeMoving ? 0.99 : 1.0);
         const gl = this.gl;
         gl.disable(gl.DEPTH_TEST);
         gl.disable(gl.STENCIL_TEST);
@@ -313,26 +335,28 @@ class WindGL {
         // draw the screen into a temporary framebuffer to retain it as the background on the next frame
         this._util.bindFramebuffer(this._framebuffer, this._screenTexture[0]);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        gl.clearColor(0.5, 0.5, 0, 0);
+        gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
         this._drawTexture(this._screenTexture[1], this._currentOpacity);
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         this._drawParticles();
-        this._util.bindFramebuffer(null);
-        // enable blending to support drawing on top of an existing background (e.g. a map)
+        this._util.bindFramebuffer(this._framebuffer, this._bgTexture);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+        this._drawBg();
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         this._drawTexture(this._screenTexture[0], 1.0);
         gl.disable(gl.BLEND);
         this._screenTexture.reverse();
+        this._util.bindFramebuffer(null);
+        this._drawTexture(this._bgTexture, 1.0);
+        // enable blending to support drawing on top of an existing background (e.g. a map)
     }
-    _drawTexture(texture, opacity) {
+    _drawBg() {
         const gl = this.gl;
-        const program = this._programs.screen;
+        const program = this._programs.bg;
         gl.useProgram(program.program);
-        this._util.bindTexture(program.u_screen, texture);
-        gl.uniform1f(program.u_opacity, opacity);
         gl.uniform2f(program.u_canvasOrigin, this._canvasOrigin[0], this._canvasOrigin[1]);
         gl.uniform2f(program.u_canvasSize, this._canvasSize[0], this._canvasSize[1]);
         this._util.bindTexture(program.u_windTex, this._windTextures.textures[this._texIndex]);
@@ -341,8 +365,16 @@ class WindGL {
         gl.uniform1f(program.u_windSpdMin, this.minSpeedColor);
         gl.uniform1f(program.u_windSpdMax, this.maxSpeedColor);
         gl.uniform1f(program.u_timeFac, this._timeFac);
+        this._util.bindTexture(program.u_colorRamp, this._colorRampTextureBg);
         this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
-        this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+    _drawTexture(texture, opacity) {
+        const gl = this.gl;
+        const program = this._programs.screen;
+        gl.useProgram(program.program);
+        this._util.bindTexture(program.u_screen, texture);
+        gl.uniform1f(program.u_opacity, opacity);
         this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
@@ -1106,7 +1138,6 @@ class LeafletWindGL extends L.Layer {
             cancelAnimationFrame(this._animationId);
             this._animationId = null;
         }
-        console.log('stopping animation');
     }
     _draw() {
         this._stopAnimation();
@@ -1114,7 +1145,6 @@ class LeafletWindGL extends L.Layer {
         this._setCanvasBounds();
         this._windGl.reset();
         setTimeout(() => {
-            console.log('starting animation');
             this._startAnimation();
         }, 1);
         this._startAnimation();

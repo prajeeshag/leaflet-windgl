@@ -34,7 +34,7 @@ const vData = vArr.data
 const map = L.map("map", {
     crs: L.CRS.EPSG4326,
     maxBounds: [[latS, lonW], [latN, lonE]]
-}).setView([lat0, lon0], 3);
+}).setView([lat0, lon0], 4);
 
 // // Set map background to black
 map.getContainer().style.background = "black";
@@ -45,7 +45,7 @@ fetch(`${baseUrl}/countryMap.geojson`)
     .then(geojson => {
         const borderLayer = L.geoJSON(geojson, {
             style: {
-                color: 'gray',
+                color: 'black',
                 weight: 1,
                 fill: false
             }
