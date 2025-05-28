@@ -45,7 +45,7 @@ fetch(`${baseUrl}/countryMap.geojson`)
     .then(geojson => {
         const borderLayer = L.geoJSON(geojson, {
             style: {
-                color: 'gray',
+                color: 'black',
                 weight: 1,
                 fill: false
             }

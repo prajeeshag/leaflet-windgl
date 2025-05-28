@@ -91,7 +91,6 @@ export class LeafletWindGL extends L.Layer {
             cancelAnimationFrame(this._animationId);
             this._animationId = null;
         }
-        console.log('stopping animation');
     }
 
     private _draw() {
@@ -101,7 +100,6 @@ export class LeafletWindGL extends L.Layer {
         this._windGl.reset();
 
         setTimeout(() => {
-            console.log('starting animation');
             this._startAnimation();
         }, 1);
         this._startAnimation();

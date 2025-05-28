@@ -7,23 +7,36 @@ import drawFrag from './shaders/draw.frag.glsl';
 
 import quadVert from './shaders/quad.vert.glsl';
 import screenFrag from './shaders/screen.frag.glsl';
+import bgFrag from './shaders/bg.frag.glsl';
 
 import updateVert from './shaders/update.vert.glsl';
 import updatePosFrag from './shaders/updatePos.frag.glsl';
 import updateAgeFrag from './shaders/updateAge.frag.glsl'
 
-const defaultRampColors = {
-    0.0: 'rgba(44,123,182,0.2)',    // blue
-    0.1: 'rgba(0,166,202,0.2)',     // cyan
-    0.2: 'rgba(0,204,188,0.5)',     // teal
-    0.3: 'rgba(144,235,157,0.5)',   // light green
-    0.5: 'rgba(255,255,140,0.5)',   // yellow
-    0.7: 'rgba(249,208,87,0.7)',    // orange
-    0.8: 'rgba(242,158,46,0.7)',    // orange-brown
-    1.0: 'rgba(215,25,28,0.7)',     // red
+// const magnitudeColorRamp = {
+//     0.0: 'rgba(44,123,182,0.9)',    // blue
+//     0.1: 'rgba(0,166,202,0.9)',     // cyan
+//     0.2: 'rgba(0,204,188,0.9)',     // teal
+//     0.3: 'rgba(144,235,157,0.9)',   // light green
+//     0.5: 'rgba(255,255,140,0.9)',   // yellow
+//     0.7: 'rgba(249,208,87,0.9)',    // orange
+//     0.8: 'rgba(242,158,46,0.9)',    // orange-brown
+//     1.0: 'rgba(215,25,28,0.9)',     // red
+// };
+const magnitudeColorRamp = {
+    0.0: 'rgb(5, 77, 132)',    // blue
+    0.25: 'rgb(4, 105, 33)',    // blue
+    0.5: 'rgb(141, 159, 7)',
+    0.75: 'rgb(145, 113, 7)',
+    1.0: 'rgb(144, 55, 7)',
 };
 
-// const defaultRampColors = {
+const particleColorRamp = {
+    0.0: 'rgba(255, 255, 255, 0.4)', // transparent
+    1.0: 'rgba(255, 255, 255, 0.8)', // transparent
+}
+
+// const particleColorRamp = {
 //     0.0: 'rgba(250,250,250,0.1)', // transparent
 //     1.0: 'rgba(250,250,250,0.7)', // transparent
 // }
@@ -35,18 +48,20 @@ const defaultRampColors = {
 
 export default class WindGL {
     gl: WebGLRenderingContext
-    fadeOpacity = 0.99; // how fast the particle trails fade on each frame
-    speedFactor = 3.5; // how fast the particles move
-    dropRate = 0.09; // how fast the particle will die off
+    fadeOpacity = 0.98; // how fast the particle trails fade on each frame
+    speedFactor = 4.; // how fast the particles move
+    dropRate = 0.3; // how fast the particle will die off
     minSpeedColor = 1.0; // minimum color velocity
     maxSpeedColor = 15.0; // maximum color velocity
     private _particleLength: number = 70; // length of a particle with its tail
-    private _pointsPerPixel: number = 0.5
+    private _pointsPerPixel: number = 0.4
     private _programs: { [key: string]: any } = {}
     private _quadBuffer: any;
     private _framebuffer!: WebGLFramebuffer;
     private _screenTexture!: [WebGLTexture, WebGLTexture];
+    private _bgTexture!: WebGLTexture;
     private _colorRampTexture: WebGLTexture;
+    private _colorRampTextureBg: WebGLTexture;
     private _particleTexRes!: [number, number];
     private _numParticles!: number;
     private _particlePosTex: { read: WebGLTexture, write: WebGLTexture } | null = null; // this will hold the particle positions
@@ -68,10 +83,12 @@ export default class WindGL {
         this._util = new Util(gl);
         this._programs['draw'] = this._util.createProgram(drawVert, drawFrag);
         this._programs['screen'] = this._util.createProgram(quadVert, screenFrag);
+        this._programs['bg'] = this._util.createProgram(quadVert, bgFrag);
         this._programs['updatePos'] = this._util.createProgram(updateVert, updatePosFrag);
         this._programs['updateAge'] = this._util.createProgram(updateVert, updateAgeFrag)
 
-        this._colorRampTexture = this._util.createTexture(this.gl.LINEAR, getColorRamp(defaultRampColors), 16, 16);
+        this._colorRampTexture = this._util.createTexture(this.gl.LINEAR, getColorRamp(particleColorRamp), 16, 16);
+        this._colorRampTextureBg = this._util.createTexture(this.gl.LINEAR, getColorRamp(magnitudeColorRamp), 16, 16);
 
         this._windData = windData;
         this._windTextures = new WindTexture(windData, gl);
@@ -203,6 +220,10 @@ export default class WindGL {
             this._util.createTexture(gl.NEAREST, emptyPixels, gl.canvas.width, gl.canvas.height),
             this._util.createTexture(gl.NEAREST, emptyPixels, gl.canvas.width, gl.canvas.height)
         ]
+        if (this._bgTexture) {
+            gl.deleteTexture(this._bgTexture);
+        }
+        this._bgTexture = this._util.createTexture(gl.LINEAR, emptyPixels, gl.canvas.width, gl.canvas.height);
     }
 
     private _numPoints(): number {
@@ -218,11 +239,11 @@ export default class WindGL {
         this._texIndex = Math.floor(dt);
         const prevTimeFac = this._timeFac;
         this._timeFac = dt - this._texIndex;
-        this._currentOpacity = this.fadeOpacity * (this._timeFac !== prevTimeFac ? 0.99 : 1.0);
+        const isTimeMoving = this._timeFac !== prevTimeFac;
+        this._currentOpacity = this.fadeOpacity * (isTimeMoving ? 0.99 : 1.0);
         const gl = this.gl;
         gl.disable(gl.DEPTH_TEST);
         gl.disable(gl.STENCIL_TEST);
-
         this._drawScreen();
         this._updateParticleAge();
         this._updateParticlePos();
@@ -233,29 +254,34 @@ export default class WindGL {
         // draw the screen into a temporary framebuffer to retain it as the background on the next frame
         this._util.bindFramebuffer(this._framebuffer, this._screenTexture[0]);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-
-        gl.clearColor(0.5, 0.5, 0, 0);
+        gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
-
         this._drawTexture(this._screenTexture[1], this._currentOpacity);
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         this._drawParticles();
-        this._util.bindFramebuffer(null);
-        // enable blending to support drawing on top of an existing background (e.g. a map)
+
+        this._util.bindFramebuffer(this._framebuffer, this._bgTexture);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+        this._drawBg();
+
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         this._drawTexture(this._screenTexture[0], 1.0);
         gl.disable(gl.BLEND);
         this._screenTexture.reverse()
+
+        this._util.bindFramebuffer(null);
+        this._drawTexture(this._bgTexture, 1.0);
+        // enable blending to support drawing on top of an existing background (e.g. a map)
+
     }
 
-    private _drawTexture(texture: WebGLTexture, opacity: number) {
+    private _drawBg() {
         const gl = this.gl;
-        const program = this._programs.screen;
+        const program = this._programs.bg;
+
         gl.useProgram(program.program);
-        this._util.bindTexture(program.u_screen, texture)
-        gl.uniform1f(program.u_opacity, opacity);
         gl.uniform2f(program.u_canvasOrigin, this._canvasOrigin[0], this._canvasOrigin[1]);
         gl.uniform2f(program.u_canvasSize, this._canvasSize[0], this._canvasSize[1]);
         this._util.bindTexture(program.u_windTex, this._windTextures.textures[this._texIndex]!)
@@ -264,8 +290,17 @@ export default class WindGL {
         gl.uniform1f(program.u_windSpdMin, this.minSpeedColor);
         gl.uniform1f(program.u_windSpdMax, this.maxSpeedColor);
         gl.uniform1f(program.u_timeFac, this._timeFac);
+        this._util.bindTexture(program.u_colorRamp, this._colorRampTextureBg)
         this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
-        this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
+
+    private _drawTexture(texture: WebGLTexture, opacity: number) {
+        const gl = this.gl;
+        const program = this._programs.screen;
+        gl.useProgram(program.program);
+        this._util.bindTexture(program.u_screen, texture)
+        gl.uniform1f(program.u_opacity, opacity);
         this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
