@@ -23,24 +23,24 @@ import updateAgeFrag from './shaders/updateAge.frag.glsl'
 //     1.0: 'rgba(215,25,28,1)',     // red
 // };
 
-// const defaultRampColors = {
-//     0.0: 'rgba(250,250,250,0.7)', // transparent
-//     1.0: 'rgba(250,250,250,0.99)', // transparent
-// }
-
 const defaultRampColors = {
-    0.0: 'rgba(250,250,250,1)', // transparent
-    1.0: 'rgba(250,250,250,1)', // transparent
-};
+    0.0: 'rgba(250,250,250,0.1)', // transparent
+    1.0: 'rgba(250,250,250,0.7)', // transparent
+}
+
+// const defaultRampColors = {
+//     0.0: 'rgba(250,250,250,1)', // transparent
+//     1.0: 'rgba(250,250,250,1)', // transparent
+// };
 
 export default class WindGL {
     gl: WebGLRenderingContext
-    fadeOpacity = 0.0; // how fast the particle trails fade on each frame
-    speedFactor = 0.8; // how fast the particles move
-    dropRate = 0.1; // how fast the particle will die off
+    fadeOpacity = 0.997; // how fast the particle trails fade on each frame
+    speedFactor = 3.5; // how fast the particles move
+    dropRate = 0.09; // how fast the particle will die off
     minSpeedColor = 1.0; // minimum color velocity
     maxSpeedColor = 15.0; // maximum color velocity
-    private _particleLength: number = 50; // length of a particle with its tail
+    private _particleLength: number = 70; // length of a particle with its tail
     private _pointsPerPixel: number = 0.5
     private _programs: { [key: string]: any } = {}
     private _quadBuffer: any;
@@ -61,6 +61,7 @@ export default class WindGL {
     private _canvasSize: [number, number] = [0, 0]; //[x0,y0] canvas size relative to the wind data grid all normalized to [0,1]
     private _lineCoordBuffer!: WebGLBuffer;
     private _lineRoleBuffer!: WebGLBuffer;
+    private _currentOpacity!: number
 
     constructor(gl: WebGLRenderingContext, windData: WindData) {
         this.gl = gl;
@@ -70,7 +71,6 @@ export default class WindGL {
         this._programs['updatePos'] = this._util.createProgram(updateVert, updatePosFrag);
         this._programs['updateAge'] = this._util.createProgram(updateVert, updateAgeFrag)
 
-        this._quadBuffer = this._util.createBuffer(new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
         this._colorRampTexture = this._util.createTexture(this.gl.LINEAR, getColorRamp(defaultRampColors), 16, 16);
 
         this._windData = windData;
@@ -79,21 +79,26 @@ export default class WindGL {
         this.reset();
     }
 
-    set pointsPerPixel(value: number) {
-        value = Math.max(0.0, Math.min(1.0, value));
-        this._pointsPerPixel = value;
-        this.reset();
+    reset() {
+        if (this._framebuffer) {
+            this.gl.deleteFramebuffer(this._framebuffer);
+        }
+        this._framebuffer = this.gl.createFramebuffer();
+        this._initParticles();
+        this._initScreenTexture();
     }
 
-    get pointsPerPixel(): number {
-        return this._pointsPerPixel;
+    setCanvasPos(x0: number, y0: number, width: number, height: number) {
+        this._canvasOrigin = [x0, y0];
+        this._canvasSize = [width, height];
     }
+
 
     private _initParticles() {
         const pointsPerPixel = this._pointsPerPixel;
         const gl = this.gl;
-        // const numParticles = Math.min(Math.floor((pointsPerPixel * gl.canvas.width * gl.canvas.height) / this._particleLength), gl.getParameter(gl.MAX_TEXTURE_SIZE));
-        const numParticles = 1;  // for testing purposes, we use a fixed number of particles
+        const numParticles = Math.min(Math.floor((pointsPerPixel * gl.canvas.width * gl.canvas.height) / this._particleLength), gl.getParameter(gl.MAX_TEXTURE_SIZE));
+        // const numParticles = 50;  // for testing purposes, we use a fixed number of particles
         this._numParticles = numParticles;
         this._particleTexRes = [this._particleLength, numParticles]
         const particleRes = this._particleTexRes;
@@ -114,8 +119,8 @@ export default class WindGL {
                 for (let k = 0; k < 4; k++) {
                     particlePos[(j * width + i) * 4 + k] = pos[k]!
                     // particlePos[(j * width + i) * 4 + k] = Math.floor(Math.random() * 256.);
-                    // particleAge[(j * width + i) * 4 + k] = age[k]!
-                    particleAge[(j * width + i) * 4 + k] = Math.floor(0.01 * 256)
+                    particleAge[(j * width + i) * 4 + k] = age[k]!
+                    // particleAge[(j * width + i) * 4 + k] = Math.floor(0.01 * 256)
                 }
             }
         }
@@ -184,6 +189,10 @@ export default class WindGL {
 
     private _initScreenTexture() {
         const gl = this.gl;
+        if (gl.isBuffer(this._quadBuffer)) {
+            this.gl.deleteBuffer(this._quadBuffer);
+        }
+        this._quadBuffer = this._util.createBuffer(new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
         const emptyPixels = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
         // First delete the old texture
         if (this._screenTexture) {
@@ -204,27 +213,16 @@ export default class WindGL {
         return this._numParticles * 2 * (this._particleLength - 1);
     }
 
-    reset() {
-        if (this._framebuffer) {
-            this.gl.deleteFramebuffer(this._framebuffer);
-        }
-        this._framebuffer = this.gl.createFramebuffer();
-        this._initParticles();
-        this._initScreenTexture();
-    }
-
-    setCanvasPos(x0: number, y0: number, width: number, height: number) {
-        this._canvasOrigin = [x0, y0];
-        this._canvasSize = [width, height];
-    }
-
     draw(timeStep: number) {
         var dt = Math.min(Math.max(0.0, Math.min(0.99999, timeStep)) * this._windTextures.ntex, this._windTextures.ntex);
         this._texIndex = Math.floor(dt);
+        const prevTimeFac = this._timeFac;
         this._timeFac = dt - this._texIndex;
+        this._currentOpacity = this.fadeOpacity * (this._timeFac !== prevTimeFac ? 0.996 : 1.0);
         const gl = this.gl;
         gl.disable(gl.DEPTH_TEST);
         gl.disable(gl.STENCIL_TEST);
+
         this._drawScreen();
         this._updateParticleAge();
         this._updateParticlePos();
@@ -236,27 +234,39 @@ export default class WindGL {
         this._util.bindFramebuffer(this._framebuffer, this._screenTexture[0]);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-        gl.clearColor(0, 0, 0, 0);
+        gl.clearColor(0.5, 0.5, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
-        // this._drawTexture(this._screenTexture[1], this.fadeOpacity);
-        this._drawParticles();
 
+        this._drawTexture(this._screenTexture[1], this._currentOpacity);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        this._drawParticles();
         this._util.bindFramebuffer(null);
         // enable blending to support drawing on top of an existing background (e.g. a map)
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         this._drawTexture(this._screenTexture[0], 1.0);
         gl.disable(gl.BLEND);
-        // this._screenTexture.reverse()
+        this._screenTexture.reverse()
     }
 
     private _drawTexture(texture: WebGLTexture, opacity: number) {
         const gl = this.gl;
         const program = this._programs.screen;
         gl.useProgram(program.program);
-        this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
         this._util.bindTexture(program.u_screen, texture)
         gl.uniform1f(program.u_opacity, opacity);
+        gl.uniform2f(program.u_canvasOrigin, this._canvasOrigin[0], this._canvasOrigin[1]);
+        gl.uniform2f(program.u_canvasSize, this._canvasSize[0], this._canvasSize[1]);
+        this._util.bindTexture(program.u_windTex, this._windTextures.textures[this._texIndex]!)
+        gl.uniform2f(program.u_windMin, this._windData.uMin, this._windData.vMin);
+        gl.uniform2f(program.u_windMax, this._windData.uMax, this._windData.vMax);
+        gl.uniform1f(program.u_windSpdMin, this.minSpeedColor);
+        gl.uniform1f(program.u_windSpdMax, this.maxSpeedColor);
+        gl.uniform1f(program.u_timeFac, this._timeFac);
+        this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
+        this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
+        this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
@@ -279,15 +289,15 @@ export default class WindGL {
         gl.uniform1f(program.u_windSpdMax, this.maxSpeedColor);
         this._util.bindTexture(program.u_colorRamp, this._colorRampTexture)
 
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        // gl.enable(gl.BLEND);
+        // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         if (!this._particlePosTex || !this._particleAgeTex) {
             throw new Error('Particle textures not initialized');
         }
         this._util.bindTexture(program.u_particlePosTex, this._particlePosTex.read);
         this._util.bindTexture(program.u_particleAgeTex, this._particleAgeTex.read);
         gl.drawArrays(gl.LINES, 0, this._numSegments());
-        gl.disable(gl.BLEND);
+        // gl.disable(gl.BLEND);
     }
 
     private _updateParticlePos() {
@@ -301,6 +311,9 @@ export default class WindGL {
             throw new Error('Wind texture not found');
         }
         gl.useProgram(program.program);
+        if (!this._particleCoordBuffer) {
+            throw new Error('Particle coordinate buffer not initialized');
+        }
         this._util.bindAttribute(this._particleCoordBuffer, program.a_pos, 2);
         this._util.bindTexture(program.u_windTex, windTex)
         this._util.bindTexture(program.u_particlePosTex, this._particlePosTex!.read)

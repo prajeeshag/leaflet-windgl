@@ -34,7 +34,7 @@ const vData = vArr.data
 const map = L.map("map", {
     crs: L.CRS.EPSG4326,
     maxBounds: [[latS, lonW], [latN, lonE]]
-}).setView([lat0, lon0], 2);
+}).setView([lat0, lon0], 4);
 
 // // Set map background to black
 map.getContainer().style.background = "black";
@@ -61,7 +61,7 @@ fetch(`${baseUrl}/countryMap.geojson`)
 // const windData = new WindData(
 //     tempData,
 //     tempData,
-//     [0, -10],
+//     [0, 10],
 //     [0, 10],
 //     uArr.shape[2],
 //     uArr.shape[1],

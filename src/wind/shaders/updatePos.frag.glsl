@@ -8,7 +8,7 @@ void main() {
     float age = getAge(v_index);
     vec2 posPrev = getPos(prevIndex());
 
-    vec2 pos1 = pos + getOffset(v_index) * ishead(); // update pos based of wind field only for head
+    vec2 pos1 = pos + getOffset(pos) * ishead(); // update pos based of wind field only for head
     pos1 = mix(pos1, pos, isoutside(pos1)); // if updated pos is outside keep the old
 
     float drop = floor(1. - getAge(v_index)) * ishead();

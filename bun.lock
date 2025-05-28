@@ -3,11 +3,15 @@
   "workspaces": {
     "": {
       "name": "leaflet-windgl",
+      "dependencies": {
+        "lodash-es": "^4.17.21",
+      },
       "devDependencies": {
         "@rollup/plugin-node-resolve": "^16.0.1",
         "@rollup/plugin-typescript": "^12.1.2",
         "@types/bun": "latest",
         "@types/leaflet": "^1.9.18",
+        "@types/lodash-es": "^4.17.12",
         "gh-pages": "^6.3.0",
         "leaflet": "^1.9.4",
         "rollup": "^4.41.0",
@@ -138,6 +142,10 @@
     "@types/geojson": ["@types/geojson@7946.0.16", "", {}, "sha512-6C8nqWur3j98U6+lXDfTUWIfgvZU+EumvpHKcYjujKH7woYyLj2sUmff0tRhrqM7BohUw7Pz3ZB1jj2gW9Fvmg=="],
 
     "@types/leaflet": ["@types/leaflet@1.9.18", "", { "dependencies": { "@types/geojson": "*" } }, "sha512-ht2vsoPjezor5Pmzi5hdsA7F++v5UGq9OlUduWHmMZiuQGIpJ2WS5+Gg9HaAA79gNh1AIPtCqhzejcIZ3lPzXQ=="],
+
+    "@types/lodash": ["@types/lodash@4.17.17", "", {}, "sha512-RRVJ+J3J+WmyOTqnz3PiBLA501eKwXl2noseKOrNo/6+XEHjTAxO4xHvxQB6QuNm+s4WRbn6rSiap8+EA+ykFQ=="],
+
+    "@types/lodash-es": ["@types/lodash-es@4.17.12", "", { "dependencies": { "@types/lodash": "*" } }, "sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ=="],
 
     "@types/node": ["@types/node@22.15.21", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-EV/37Td6c+MgKAbkcLG6vqZ2zEYHD7bvSrzqqs2RIhbA6w3x+Dqz8MZM3sP6kGTeLrdoOgKZe+Xja7tUB2DNkQ=="],
 
@@ -270,6 +278,8 @@
     "leaflet": ["leaflet@1.9.4", "", {}, "sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA=="],
 
     "locate-path": ["locate-path@5.0.0", "", { "dependencies": { "p-locate": "^4.1.0" } }, "sha512-t7hw9pI+WvuwNJXwk5zVHpyhIqzg2qTlklJOf0mVxGSbe3Fp2VieZcduNYjaLDoy6p9uGpQEGWG87WpMKlNq8g=="],
+
+    "lodash-es": ["lodash-es@4.17.21", "", {}, "sha512-mKnC+QJ9pWVzv+C4/U3rRsHapFfHvQFoFB92e52xeyGMcX6/OlIl78je1u8vePzYZSkkogMPJ2yjxxsb89cxyw=="],
 
     "magic-string": ["magic-string@0.21.3", "", { "dependencies": { "vlq": "^0.2.1" } }, "sha512-U66DN4L1NJsQTCaWbP9MTW+iydrqkYW8Is1QV+1tT44oZYfr0t1BUbtDew40YXrNOZSJAUYPZ8s4gd//2AZBUQ=="],
 

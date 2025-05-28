@@ -49,9 +49,12 @@ vec2 getRandPos(const vec2 pos, const vec2 index) {
     return vec2(rand(seed + 1.3), rand(seed + 2.1));
 }
 
-vec2 getOffset(const vec2 index) {
-    vec2 velocity = mix(u_windMin, u_windMax, lookup_wind(index));
-    velocity = vec2(-10., 10.);
+vec2 getVelocity(const vec2 pos) {
+    return mix(u_windMin, u_windMax, lookup_wind(pos));
+}
+
+vec2 getOffset(const vec2 pos) {
+    vec2 velocity = mix(u_windMin, u_windMax, lookup_wind(pos));
     return vec2(velocity.x, -velocity.y) * 0.0001 * u_speedFactor;
 }
 

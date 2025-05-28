@@ -1,6 +1,8 @@
 import { WindData } from './wind/windgl';
 export { WindData };
 import WindGL from './wind/windgl';
+import { debounce } from 'lodash-es';
+
 
 const L = globalThis.L as typeof import('leaflet');
 
@@ -46,14 +48,20 @@ export class LeafletWindGL extends L.Layer {
         this._windGl = new WindGL(gl, this._windData);
         this._canvas.style.position = 'absolute';
         map.getPanes().overlayPane.appendChild(this._canvas);
-        map.on('move resize zoom', this._draw, this);
+        map.on('movestart resizestart zoomstart', this._stopAnimation, this);
+        map.on('moveend resizeend zoomend', this._debounceDraw, this);
         this._draw();
         return this;
     }
 
+    private _debounceDraw = debounce(() => {
+        this._draw();
+    }, 16);
+
     onRemove(map: L.Map): this {
         map.getPanes().overlayPane.removeChild(this._canvas);
-        map.off('move resize zoom', this._draw, this);
+        map.off('movestart resizestart zoomstart', this._stopAnimation, this);
+        map.off('moveend resizeend zoomend', this._draw, this);
         this._stopAnimation();
         return this;
     }
@@ -83,6 +91,7 @@ export class LeafletWindGL extends L.Layer {
             cancelAnimationFrame(this._animationId);
             this._animationId = null;
         }
+        console.log('stopping animation');
     }
 
     private _draw() {
@@ -90,6 +99,11 @@ export class LeafletWindGL extends L.Layer {
         // Define geographic bounds: 0 to 30N latitude, 20 to 65E longitude
         this._setCanvasBounds();
         this._windGl.reset();
+
+        setTimeout(() => {
+            console.log('starting animation');
+            this._startAnimation();
+        }, 1);
         this._startAnimation();
     }
 

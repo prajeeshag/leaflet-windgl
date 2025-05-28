@@ -7,6 +7,7 @@
     "@rollup/plugin-typescript": "^12.1.2",
     "@types/bun": "latest",
     "@types/leaflet": "^1.9.18",
+    "@types/lodash-es": "^4.17.12",
     "gh-pages": "^6.3.0",
     "leaflet": "^1.9.4",
     "rollup": "^4.41.0",
@@ -25,5 +26,8 @@
   },
   "scripts": {
     "deploy-demo": "cp dist/*.js demo/js/ && gh-pages -d demo"
+  },
+  "dependencies": {
+    "lodash-es": "^4.17.21"
   }
 }
