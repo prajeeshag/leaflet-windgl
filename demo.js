@@ -1,6 +1,6 @@
 import * as zarr from "https://cdn.jsdelivr.net/npm/zarrita/+esm";
-import { WindData, LeafletWindGL } from "./leaflet-windgl.js";
-import { TimeSlider } from "./leaflet-timeslider.js";
+import { WindData, LeafletWindGL } from "./js/leaflet-windgl.js";
+import { TimeSlider } from "./js/leaflet-timeslider.js";
 
 const baseUrl = `${window.location}`;
 const baseDataUrl = `${baseUrl}/data.zarr/`;
@@ -8,11 +8,11 @@ const _openZarr = (url) => {
     return zarr.open.v3(new zarr.FetchStore(baseDataUrl + url), { kind: "array" })
 };
 
-var store = await _openZarr('10v')
+var store = await _openZarr('100v')
 const vAttr = store.attrs
 const vArr = await zarr.get(store)
 
-var store = await _openZarr('10u')
+var store = await _openZarr('100u')
 const uAttr = store.attrs
 const uArr = await zarr.get(store)
 
@@ -34,7 +34,7 @@ const vData = vArr.data
 const map = L.map("map", {
     crs: L.CRS.EPSG4326,
     maxBounds: [[latS, lonW], [latN, lonE]]
-}).setView([lat0, lon0], 4);
+}).setView([lat0, lon0], 3);
 
 // // Set map background to black
 map.getContainer().style.background = "black";
@@ -45,7 +45,7 @@ fetch(`${baseUrl}/countryMap.geojson`)
     .then(geojson => {
         const borderLayer = L.geoJSON(geojson, {
             style: {
-                color: 'white',
+                color: 'gray',
                 weight: 1,
                 fill: false
             }
@@ -56,6 +56,17 @@ fetch(`${baseUrl}/countryMap.geojson`)
 
 // // L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
+// create a const wind field of type uint18array
+// const tempData = new Uint8Array(uArr.shape[0] * uArr.shape[1] * uArr.shape[2]).fill(254);
+// const windData = new WindData(
+//     tempData,
+//     tempData,
+//     [0, 10],
+//     [0, 10],
+//     uArr.shape[2],
+//     uArr.shape[1],
+//     uArr.shape[0],
+// );
 const windData = new WindData(
     uData,
     vData,
