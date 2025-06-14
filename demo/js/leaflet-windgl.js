@@ -101,132 +101,95 @@ class glUtil {
     }
 }
 
-var drawVert = "#version 100\nprecision mediump float;attribute float a_index;uniform sampler2D u_particles;uniform sampler2D u_particle_props;uniform float u_particles_res;varying vec2 v_particle_pos;varying float v_particle_age;void main(){vec2 coord=vec2(fract(a_index/u_particles_res),floor(a_index/u_particles_res)/u_particles_res);vec4 color=texture2D(u_particles,coord);v_particle_pos=vec2(color.r/255.0+color.b,color.g/255.0+color.a);color=texture2D(u_particle_props,coord);v_particle_age=color.r+color.g/255.0;gl_PointSize=1.;gl_Position=vec4(2.0*v_particle_pos.x-1.0,1.0-2.0*v_particle_pos.y,0,1);}"; // eslint-disable-line
+var drawVert = "#version 100\nprecision mediump float;attribute vec2 a_index;attribute float a_role;uniform vec2 u_particleTexRes;uniform sampler2D u_particlePosTex;uniform sampler2D u_particleAgeTex;varying vec2 v_particlePos;varying float v_particleAge;vec2 getPos(const vec2 index){vec4 color=texture2D(u_particlePosTex,index);return vec2(color.r/255.0+color.b,color.g/255.0+color.a);}float getAge(const vec2 index){vec4 color=texture2D(u_particleAgeTex,index);return color.r+color.g/255.0;}void main(){vec2 pos=getPos(a_index);vec2 nextIndex=vec2(a_index.x+1./u_particleTexRes.x,a_index.y);vec2 posNext=getPos(nextIndex);float age=getAge(a_index);float ageNext=getAge(nextIndex);float collapse=(1.-step(ageNext,age))*a_role;pos=mix(pos,posNext,collapse);v_particleAge=age;v_particlePos=pos;gl_Position=vec4(2.0*pos.x-1.0,1.0-2.0*pos.y,0.0,1.0);}"; // eslint-disable-line
 
-var drawFrag = "#version 100\nprecision mediump float;uniform sampler2D u_wind;uniform vec2 u_canvas_origin;uniform vec2 u_canvas_size;uniform vec2 u_wind_min;uniform vec2 u_wind_max;uniform sampler2D u_color_ramp;uniform float u_time_fac;uniform float u_wind_spd_min;uniform float u_wind_spd_max;varying vec2 v_particle_pos;varying float v_particle_age;vec2 lookup_wind(const vec2 uv){vec2 uvc=u_canvas_origin+uv*u_canvas_size;vec4 wind=texture2D(u_wind,uvc);return mix(wind.rg,wind.ba,u_time_fac);}void main(){vec2 wind=lookup_wind(v_particle_pos);vec2 velocity=mix(u_wind_min,u_wind_max,wind);float speed_t=clamp((length(velocity)-u_wind_spd_min)/(u_wind_spd_max-u_wind_spd_min),0.0,1.0);vec2 ramp_pos=vec2(fract(16.0*speed_t),floor(16.0*speed_t)/16.0);vec4 color=texture2D(u_color_ramp,ramp_pos);gl_FragColor=vec4(color);}"; // eslint-disable-line
+var drawFrag = "#version 100\nprecision mediump float;uniform sampler2D u_windTex;uniform vec2 u_canvasOrigin;uniform vec2 u_canvasSize;uniform vec2 u_windMin;uniform vec2 u_windMax;uniform sampler2D u_colorRamp;uniform float u_timeFac;uniform float u_windSpdMin;uniform float u_windSpdMax;varying vec2 v_particlePos;varying float v_particleAge;vec2 lookup_wind(const vec2 uv){vec2 uvc=u_canvasOrigin+uv*u_canvasSize;vec4 wind=texture2D(u_windTex,uvc);return mix(wind.rg,wind.ba,u_timeFac);}void main(){vec2 wind=lookup_wind(v_particlePos);vec2 velocity=mix(u_windMin,u_windMax,wind);float speed_t=clamp((length(velocity)-u_windSpdMin)/(u_windSpdMax-u_windSpdMin),0.0,1.0);vec2 ramp_pos=vec2(fract(16.0*speed_t),floor(16.0*speed_t)/16.0);vec4 color=texture2D(u_colorRamp,ramp_pos);gl_FragColor=vec4(color.rgb,color.a*max((1.0-v_particleAge),0.2));}"; // eslint-disable-line
 
 var quadVert = "#version 100\nprecision mediump float;attribute vec2 a_pos;varying vec2 v_tex_pos;void main(){v_tex_pos=a_pos;gl_Position=vec4(1.0-2.0*a_pos,0,1);}"; // eslint-disable-line
 
-var screenFrag = "#version 100\nprecision mediump float;uniform sampler2D u_screen;uniform sampler2D u_wind;uniform float u_wind_spd_min;uniform float u_wind_spd_max;uniform float u_opacity;uniform vec2 u_canvas_origin;uniform vec2 u_canvas_size;uniform vec2 u_wind_min;uniform vec2 u_wind_max;uniform float u_time_fac;varying vec2 v_tex_pos;vec2 lookup_wind(const vec2 uv){vec2 uvc=u_canvas_origin+uv*u_canvas_size;vec4 wind=texture2D(u_wind,uvc);return mix(wind.rg,wind.ba,u_time_fac);}void main(){vec4 color=texture2D(u_screen,1.-v_tex_pos);vec2 wind=lookup_wind(1.0-v_tex_pos);vec2 velocity=mix(u_wind_min,u_wind_max,wind);float speed_t=length(velocity);float speed_opacity=smoothstep(0.0,4.0,speed_t);gl_FragColor=vec4(color*(u_opacity-(0.001*speed_opacity)));}"; // eslint-disable-line
+var screenFrag = "#version 100\nprecision mediump float;uniform sampler2D u_screen;uniform float u_opacity;uniform vec2 u_canvasSize;uniform vec2 u_canvasOrigin;uniform sampler2D u_windTex;uniform float u_timeFac;uniform vec2 u_windMin;uniform vec2 u_windMax;uniform float u_windSpdMin;uniform float u_windSpdMax;uniform sampler2D u_colorRamp;varying vec2 v_tex_pos;vec2 lookup_wind(const vec2 uv){vec2 uvc=u_canvasOrigin+uv*u_canvasSize;vec4 wind=texture2D(u_windTex,uvc);return mix(wind.rg,wind.ba,u_timeFac);}void main(){vec4 color=texture2D(u_screen,1.-v_tex_pos);gl_FragColor=vec4(color.rgb,color.a*u_opacity);}"; // eslint-disable-line
 
-var updateFrag = "#version 100\nprecision highp float;uniform sampler2D u_particles;uniform sampler2D u_particle_props;uniform sampler2D u_wind;uniform vec2 u_wind_res;uniform vec2 u_canvas_origin;uniform vec2 u_canvas_size;uniform vec2 u_wind_min;uniform vec2 u_wind_max;uniform float u_rand_seed;uniform float u_speed_factor;uniform float u_time_fac;varying vec2 v_tex_pos;const vec3 rand_constants=vec3(12.9898,78.233,4375.85453);float rand(const vec2 co){float t=dot(rand_constants.xy,co);return fract(sin(t)*(rand_constants.z+t));}vec2 lookup_wind(const vec2 uv){vec2 uvc=u_canvas_origin+uv*u_canvas_size;vec4 wind=texture2D(u_wind,uvc);return mix(wind.rg,wind.ba,u_time_fac);}void main(){vec4 color=texture2D(u_particles,v_tex_pos);vec2 pos=vec2(color.r/255.0+color.b,color.g/255.0+color.a);color=texture2D(u_particle_props,v_tex_pos);float age=color.r+color.g/255.0;vec2 velocity=mix(u_wind_min,u_wind_max,lookup_wind(pos));float speed_t=length(velocity)/length(u_wind_max);vec2 offset=vec2(velocity.x,-velocity.y)*0.0001*u_speed_factor;pos=pos+offset;float drop1=step(1.0,abs(1.-2.*pos.x));float drop2=step(1.0,abs(1.-2.*pos.y));drop1=max(drop1,drop2);vec2 seed=(pos+v_tex_pos)*u_rand_seed;float drop=step(age,0.0);vec2 random_pos=vec2(rand(seed+1.3),rand(seed+2.1));drop=max(drop,drop1);pos=mix(pos,random_pos,drop);gl_FragColor=vec4(fract(pos*255.0),floor(pos*255.0)/255.0);}"; // eslint-disable-line
+var bgFrag = "#version 100\nprecision mediump float;uniform vec2 u_canvasSize;uniform vec2 u_canvasOrigin;uniform sampler2D u_windTex;uniform float u_timeFac;uniform vec2 u_windMin;uniform vec2 u_windMax;uniform float u_windSpdMin;uniform float u_windSpdMax;uniform sampler2D u_colorRamp;varying vec2 v_tex_pos;vec2 lookup_wind(const vec2 uv){vec2 uvc=u_canvasOrigin+uv*u_canvasSize;vec4 wind=texture2D(u_windTex,uvc);return mix(wind.rg,wind.ba,u_timeFac);}void main(){vec2 velocity=mix(u_windMin,u_windMax,lookup_wind(vec2(1.-v_tex_pos.x,v_tex_pos.y)));float speed_t=clamp((length(velocity)-u_windSpdMin)/(u_windSpdMax-u_windSpdMin),0.0,1.0);vec2 ramp_pos=vec2(fract(16.0*speed_t),floor(16.0*speed_t)/16.0);vec4 color=texture2D(u_colorRamp,ramp_pos);gl_FragColor=color;}"; // eslint-disable-line
 
-var updatePropFrag = "#version 100\nprecision mediump float;uniform float u_drop_rate;uniform float u_time_fac;uniform vec2 u_wind_res;uniform vec2 u_wind_max;uniform vec2 u_wind_min;uniform vec2 u_canvas_origin;uniform vec2 u_canvas_size;uniform sampler2D u_wind;uniform sampler2D u_particle_props;uniform sampler2D u_particles;varying vec2 v_tex_pos;vec2 lookup_wind(const vec2 uv){vec2 uvc=u_canvas_origin+uv*u_canvas_size;vec4 wind=texture2D(u_wind,uvc);return mix(wind.rg,wind.ba,u_time_fac);}void main(){vec4 color=texture2D(u_particles,v_tex_pos);vec2 pos=vec2(color.r/255.0+color.b,color.g/255.0+color.a);vec2 velocity=mix(u_wind_min,u_wind_max,lookup_wind(pos));float speed_age=1.-smoothstep(0.0,0.5,length(velocity)/length(u_wind_max));vec4 color1=texture2D(u_particle_props,v_tex_pos);float age=(color1.r+color1.g/255.0);age=age+u_drop_rate*speed_age+u_drop_rate*0.001;age=age*step(0.0,1.0-age);gl_FragColor=vec4(vec2(floor(age*255.0)/255.0,fract(age*255.0)),0,0);}"; // eslint-disable-line
+var updateVert = "#version 100\nprecision mediump float;attribute vec2 a_index;varying vec2 v_index;void main(){v_index=a_index;gl_PointSize=1.0;gl_Position=vec4(a_index*2.0-1.0,0.0,1.0);}"; // eslint-disable-line
 
-const defaultRampColors = {
-    0.0: 'rgba(44,123,182,0.5)', // blue
-    0.1: 'rgba(0,166,202,0.7)', // cyan
-    0.2: 'rgba(0,204,188,0.8)', // teal
-    0.3: 'rgba(144,235,157,0.8)', // light green
-    0.5: 'rgba(255,255,140,0.9)', // yellow
-    0.7: 'rgba(249,208,87,1)', // orange
-    0.8: 'rgba(242,158,46,1)', // orange-brown
-    1.0: 'rgba(215,25,28,1)', // red
+var updatePosFrag = "#version 100\nprecision highp float;uniform sampler2D u_particlePosTex;uniform sampler2D u_particleAgeTex;uniform sampler2D u_windTex;uniform vec2 u_windMin;uniform vec2 u_windMax;uniform vec2 u_windRes;uniform vec2 u_canvasOrigin;uniform vec2 u_canvasSize;uniform float u_randSeed;uniform float u_speedFactor;uniform float u_timeFac;uniform vec2 u_particleTexRes;varying vec2 v_index;vec2 lookup_wind(const vec2 uv){vec2 uvc=u_canvasOrigin+uv*u_canvasSize;vec4 wind=texture2D(u_windTex,uvc);return mix(wind.rg,wind.ba,u_timeFac);}const vec3 rand_constants=vec3(12.9898,78.233,4375.85453);float rand(const vec2 co){float t=dot(rand_constants.xy,co);return fract(sin(t)*(rand_constants.z+t));}vec2 getPos(const vec2 index){vec4 color=texture2D(u_particlePosTex,index);return vec2(color.r/255.0+color.b,color.g/255.0+color.a);}float getAge(const vec2 index){vec4 color=texture2D(u_particleAgeTex,index);return color.r+color.g/255.0;}float getAgeCounter(const vec2 index){vec4 color=texture2D(u_particleAgeTex,index);return color.b*255.0;}float isoutside(const vec2 pos){return min(step(1.0,abs(pos.x*2.-1.))+step(1.0,abs(pos.y*2.-1.)),1.0);}vec2 getRandPos(const vec2 pos,const vec2 index){vec2 seed=(pos+index)*u_randSeed;return vec2(rand(seed+1.3),rand(seed+2.1));}vec2 getVelocity(const vec2 pos){return mix(u_windMin,u_windMax,lookup_wind(pos));}vec2 getOffset(const vec2 pos){vec2 velocity=mix(u_windMin,u_windMax,lookup_wind(pos));return vec2(velocity.x,-velocity.y)*0.0001*u_speedFactor;}vec2 prevIndex(){return vec2(v_index.x-1.0/u_particleTexRes.x,v_index.y);}float ishead(){return step(v_index.x,1.0/u_particleTexRes.x);}void main(){vec2 pos=getPos(v_index);float age=getAge(v_index);vec2 posPrev=getPos(prevIndex());vec2 pos1=pos+getOffset(pos)*ishead();pos1=mix(pos1,pos,isoutside(pos1));float drop=floor(1.-getAge(v_index))*ishead();vec2 randomPos=getRandPos(pos,v_index);pos1=mix(pos1,randomPos,drop);pos1=mix(posPrev,pos1,ishead());gl_FragColor=vec4(fract(pos1*255.0),floor(pos1*255.0)/255.0);}"; // eslint-disable-line
+
+var updateAgeFrag = "#version 100\nprecision highp float;uniform float u_particleLength;uniform float u_dropRate;uniform sampler2D u_particlePosTex;uniform sampler2D u_particleAgeTex;uniform sampler2D u_windTex;uniform vec2 u_windMin;uniform vec2 u_windMax;uniform vec2 u_windRes;uniform vec2 u_canvasOrigin;uniform vec2 u_canvasSize;uniform float u_randSeed;uniform float u_speedFactor;uniform float u_timeFac;uniform vec2 u_particleTexRes;varying vec2 v_index;vec2 lookup_wind(const vec2 uv){vec2 uvc=u_canvasOrigin+uv*u_canvasSize;vec4 wind=texture2D(u_windTex,uvc);return mix(wind.rg,wind.ba,u_timeFac);}const vec3 rand_constants=vec3(12.9898,78.233,4375.85453);float rand(const vec2 co){float t=dot(rand_constants.xy,co);return fract(sin(t)*(rand_constants.z+t));}vec2 getPos(const vec2 index){vec4 color=texture2D(u_particlePosTex,index);return vec2(color.r/255.0+color.b,color.g/255.0+color.a);}float getAge(const vec2 index){vec4 color=texture2D(u_particleAgeTex,index);return color.r+color.g/255.0;}float getAgeCounter(const vec2 index){vec4 color=texture2D(u_particleAgeTex,index);return color.b*255.0;}float isoutside(const vec2 pos){return min(step(1.0,abs(pos.x*2.-1.))+step(1.0,abs(pos.y*2.-1.)),1.0);}vec2 getRandPos(const vec2 pos,const vec2 index){vec2 seed=(pos+index)*u_randSeed;return vec2(rand(seed+1.3),rand(seed+2.1));}vec2 getVelocity(const vec2 pos){return mix(u_windMin,u_windMax,lookup_wind(pos));}vec2 getOffset(const vec2 pos){vec2 velocity=mix(u_windMin,u_windMax,lookup_wind(pos));return vec2(velocity.x,-velocity.y)*0.0001*u_speedFactor;}vec2 prevIndex(){return vec2(v_index.x-1.0/u_particleTexRes.x,v_index.y);}float ishead(){return step(v_index.x,1.0/u_particleTexRes.x);}void main(){float ageCounter=mod(floor(getAgeCounter(v_index)+1.),u_particleLength*0.9);float updateAge=1.-clamp(ageCounter,0.,1.);vec2 pos=getPos(v_index);vec2 pos1=pos+getOffset(v_index);float dropRate=mix(u_dropRate,1.-u_dropRate,isoutside(pos1));float age=getAge(v_index);float update0Age=floor(1.-fract(age));float prevAge=getAge(prevIndex());float age1=fract(min(age+dropRate,1.0));age1=mix(age,age1,min(updateAge+update0Age,1.0));age1=mix(prevAge,age1,ishead());vec2 age_encoded=vec2(floor(age1*255.0)/255.0,fract(age1*255.0));gl_FragColor=vec4(age_encoded,ageCounter/255.0,0.0);}"; // eslint-disable-line
+
+// const magnitudeColorRamp = {
+//     0.0: 'rgba(44,123,182,0.9)',    // blue
+//     0.1: 'rgba(0,166,202,0.9)',     // cyan
+//     0.2: 'rgba(0,204,188,0.9)',     // teal
+//     0.3: 'rgba(144,235,157,0.9)',   // light green
+//     0.5: 'rgba(255,255,140,0.9)',   // yellow
+//     0.7: 'rgba(249,208,87,0.9)',    // orange
+//     0.8: 'rgba(242,158,46,0.9)',    // orange-brown
+//     1.0: 'rgba(215,25,28,0.9)',     // red
+// };
+const magnitudeColorRamp = {
+    0.0: 'rgb(5, 77, 132)', // blue
+    0.25: 'rgb(4, 105, 33)', // blue
+    0.5: 'rgb(141, 159, 7)',
+    0.75: 'rgb(145, 113, 7)',
+    1.0: 'rgb(144, 55, 7)',
 };
+const particleColorRamp = {
+    0.0: 'rgba(255, 255, 255, 0.4)', // transparent
+    1.0: 'rgba(255, 255, 255, 0.8)', // transparent
+};
+// const particleColorRamp = {
+//     0.0: 'rgba(250,250,250,0.1)', // transparent
+//     1.0: 'rgba(250,250,250,0.7)', // transparent
+// }
 // const defaultRampColors = {
-//     0.0: '#ffffff',
-//     1.0: '#ffffff',
+//     0.0: 'rgba(250,250,250,1)', // transparent
+//     1.0: 'rgba(250,250,250,1)', // transparent
 // };
 class WindGL {
     gl;
-    fadeOpacity = 0.99; // how fast the particle trails fade on each frame
-    speedFactor = 1.5; // how fast the particles move
-    dropRate = 0.009; // how fast the particle will die off
+    fadeOpacity = 0.98; // how fast the particle trails fade on each frame
+    speedFactor = 4.; // how fast the particles move
+    dropRate = 0.3; // how fast the particle will die off
     minSpeedColor = 1.0; // minimum color velocity
     maxSpeedColor = 15.0; // maximum color velocity
-    _particlesPerPixel = 0.03;
+    _particleLength = 70; // length of a particle with its tail
+    _pointsPerPixel = 0.4;
     _programs = {};
     _quadBuffer;
     _framebuffer;
     _screenTexture;
+    _bgTexture;
     _colorRampTexture;
-    _particleStateResolution;
+    _colorRampTextureBg;
+    _particleTexRes;
     _numParticles;
-    _particlePosTexture;
-    _particlePropTexture;
-    _particleIndexBuffer;
+    _particlePosTex = null; // this will hold the particle positions
+    _particleAgeTex = null; // this will hold the particle properties (e.g. age)
+    _particleCoordBuffer; // this will hold the particle coordinates
     _windTextures;
     _windData;
     _util;
-    _timeFactor = 0.0;
+    _timeFac = 0.0;
     _texIndex = 0;
     _canvasOrigin = [0, 0]; //[x0,y0] canvas position relative to the wind data grid all normalized to [0,1]
     _canvasSize = [0, 0]; //[x0,y0] canvas size relative to the wind data grid all normalized to [0,1]
+    _lineCoordBuffer;
+    _lineRoleBuffer;
+    _currentOpacity;
     constructor(gl, windData) {
         this.gl = gl;
         this._util = new glUtil(gl);
         this._programs['draw'] = this._util.createProgram(drawVert, drawFrag);
         this._programs['screen'] = this._util.createProgram(quadVert, screenFrag);
-        this._programs['update'] = this._util.createProgram(quadVert, updateFrag);
-        this._programs['updateProp'] = this._util.createProgram(quadVert, updatePropFrag);
-        this._quadBuffer = this._util.createBuffer(new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
-        this._colorRampTexture = this._util.createTexture(this.gl.LINEAR, getColorRamp(defaultRampColors), 16, 16);
+        this._programs['bg'] = this._util.createProgram(quadVert, bgFrag);
+        this._programs['updatePos'] = this._util.createProgram(updateVert, updatePosFrag);
+        this._programs['updateAge'] = this._util.createProgram(updateVert, updateAgeFrag);
+        this._colorRampTexture = this._util.createTexture(this.gl.LINEAR, getColorRamp(particleColorRamp), 16, 16);
+        this._colorRampTextureBg = this._util.createTexture(this.gl.LINEAR, getColorRamp(magnitudeColorRamp), 16, 16);
         this._windData = windData;
         this._windTextures = new WindTexture(windData, gl);
-        // we create a square texture where each pixel will hold a particle position encoded as RGBA
         this.reset();
-    }
-    set particlesPerPixel(value) {
-        value = Math.max(0.0, Math.min(1.0, value));
-        this._particlesPerPixel = value;
-        this.reset();
-    }
-    get particlesPerPixel() {
-        return this._particlesPerPixel;
-    }
-    _initParticles() {
-        const particlesPerPixel = this._particlesPerPixel;
-        const gl = this.gl;
-        const numParticles = Math.floor(particlesPerPixel * gl.canvas.width * gl.canvas.height);
-        const particleRes = this._particleStateResolution = Math.floor(Math.sqrt(numParticles));
-        this._numParticles = particleRes * particleRes;
-        const numParticlesRGBA = this._numParticles * 4;
-        // two sets of rgba texture, first for position, second for properties
-        const particleState = new Uint8Array(numParticlesRGBA);
-        const particleProp = new Uint8Array(numParticlesRGBA);
-        for (let i = 0; i < numParticlesRGBA; i++) {
-            particleState[i] = Math.floor(Math.random() * 256); // randomize the initial particle positions
-        }
-        for (let i = 0; i < numParticlesRGBA; i++) {
-            particleProp[i] = 128; // randomize the initial particle positions
-        }
-        // textures to hold the particle state for the current and the next frame
-        if (this._particlePosTexture) {
-            gl.deleteTexture(this._particlePosTexture[0]);
-            gl.deleteTexture(this._particlePosTexture[1]);
-        }
-        this._particlePosTexture = [
-            this._util.createTexture(gl.NEAREST, particleState, particleRes, particleRes),
-            this._util.createTexture(gl.NEAREST, particleState, particleRes, particleRes)
-        ];
-        if (this._particlePropTexture) {
-            gl.deleteTexture(this._particlePropTexture[0]);
-            gl.deleteTexture(this._particlePropTexture[1]);
-        }
-        this._particlePropTexture = [
-            this._util.createTexture(gl.NEAREST, particleState, particleRes, particleRes),
-            this._util.createTexture(gl.NEAREST, particleState, particleRes, particleRes)
-        ];
-        const particleIndices = new Float32Array(this._numParticles);
-        for (let i = 0; i < this._numParticles; i++)
-            particleIndices[i] = i;
-        if (this._particleIndexBuffer) {
-            gl.deleteBuffer(this._particleIndexBuffer);
-        }
-        this._particleIndexBuffer = this._util.createBuffer(particleIndices);
-    }
-    _initScreenTexture() {
-        const gl = this.gl;
-        const emptyPixels = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
-        // First delete the old texture
-        if (this._screenTexture) {
-            gl.deleteTexture(this._screenTexture[0]);
-            gl.deleteTexture(this._screenTexture[1]);
-        }
-        this._screenTexture = [
-            this._util.createTexture(gl.NEAREST, emptyPixels, gl.canvas.width, gl.canvas.height),
-            this._util.createTexture(gl.NEAREST, emptyPixels, gl.canvas.width, gl.canvas.height)
-        ];
     }
     reset() {
         if (this._framebuffer) {
@@ -240,49 +203,179 @@ class WindGL {
         this._canvasOrigin = [x0, y0];
         this._canvasSize = [width, height];
     }
+    _initParticles() {
+        const pointsPerPixel = this._pointsPerPixel;
+        const gl = this.gl;
+        const numParticles = Math.min(Math.floor((pointsPerPixel * gl.canvas.width * gl.canvas.height) / this._particleLength), gl.getParameter(gl.MAX_TEXTURE_SIZE));
+        // const numParticles = 50;  // for testing purposes, we use a fixed number of particles
+        this._numParticles = numParticles;
+        this._particleTexRes = [this._particleLength, numParticles];
+        const particleRes = this._particleTexRes;
+        const width = this._particleTexRes[0];
+        const height = this._particleTexRes[1];
+        // two sets of rgba texture, first for position, second for properties
+        const particlePos = new Uint8Array(this._numPoints() * 4);
+        const particleAge = new Uint8Array(this._numPoints() * 4); // age, ageUpdateCounter
+        const pos = new Uint8Array(4);
+        const age = new Uint8Array(4);
+        for (let j = 0; j < height; j++) {
+            for (let k = 0; k < 4; k++) {
+                pos[k] = Math.floor(Math.random() * 256.);
+                age[k] = Math.floor((Math.random() + 0.01) * 256.); // hack to avoid zero age at initial time
+            }
+            for (let i = 0; i < width; i++) {
+                for (let k = 0; k < 4; k++) {
+                    particlePos[(j * width + i) * 4 + k] = pos[k];
+                    // particlePos[(j * width + i) * 4 + k] = Math.floor(Math.random() * 256.);
+                    particleAge[(j * width + i) * 4 + k] = age[k];
+                    // particleAge[(j * width + i) * 4 + k] = Math.floor(0.01 * 256)
+                }
+            }
+        }
+        if (this._particlePosTex !== null) {
+            gl.deleteTexture(this._particlePosTex.read);
+            gl.deleteTexture(this._particlePosTex.write);
+        }
+        if (this._particleAgeTex !== null) {
+            gl.deleteTexture(this._particleAgeTex.read);
+            gl.deleteTexture(this._particleAgeTex.write);
+        }
+        this._particlePosTex = {
+            read: this._util.createTexture(gl.NEAREST, particlePos, particleRes[0], particleRes[1]),
+            write: this._util.createTexture(gl.NEAREST, particlePos, particleRes[0], particleRes[1])
+        };
+        this._particleAgeTex = {
+            read: this._util.createTexture(gl.NEAREST, particleAge, particleRes[0], particleRes[1]),
+            write: this._util.createTexture(gl.NEAREST, particleAge, particleRes[0], particleRes[1])
+        };
+        const particleCount = width * height;
+        const a_pos = new Float32Array(particleCount * 2);
+        let i = 0;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                a_pos[i++] = (x + 0.5) / width; // center of texel in X
+                a_pos[i++] = (y + 0.5) / height; // center of texel in Y
+            }
+        }
+        if (this._particleCoordBuffer) {
+            gl.deleteBuffer(this._particleCoordBuffer);
+        }
+        this._particleCoordBuffer = this._util.createBuffer(a_pos);
+        const lineCount = (width - 1) * height;
+        const l_pos = new Float32Array(lineCount * 2 * 2);
+        const l_role = new Float32Array(lineCount * 2);
+        i = 0;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width - 1; x++) {
+                l_pos[i++] = (x + 0.5) / width; // center of texel in X
+                l_pos[i++] = (y + 0.5) / height; // center of texel in Y
+                l_pos[i++] = (x + 1.5) / width; // center of texel in X
+                l_pos[i++] = (y + 0.5) / height; // center of texel in Y
+            }
+        }
+        i = 0;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width - 1; x++) {
+                l_role[i++] = 1; // first point in segment 
+                l_role[i++] = 0; // second point in segment
+            }
+        }
+        if (this._lineCoordBuffer) {
+            gl.deleteBuffer(this._lineCoordBuffer);
+        }
+        this._lineCoordBuffer = this._util.createBuffer(l_pos);
+        if (this._lineRoleBuffer) {
+            gl.deleteBuffer(this._lineRoleBuffer);
+        }
+        this._lineRoleBuffer = this._util.createBuffer(l_role);
+    }
+    _initScreenTexture() {
+        const gl = this.gl;
+        if (gl.isBuffer(this._quadBuffer)) {
+            this.gl.deleteBuffer(this._quadBuffer);
+        }
+        this._quadBuffer = this._util.createBuffer(new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1]));
+        const emptyPixels = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
+        // First delete the old texture
+        if (this._screenTexture) {
+            gl.deleteTexture(this._screenTexture[0]);
+            gl.deleteTexture(this._screenTexture[1]);
+        }
+        this._screenTexture = [
+            this._util.createTexture(gl.NEAREST, emptyPixels, gl.canvas.width, gl.canvas.height),
+            this._util.createTexture(gl.NEAREST, emptyPixels, gl.canvas.width, gl.canvas.height)
+        ];
+        if (this._bgTexture) {
+            gl.deleteTexture(this._bgTexture);
+        }
+        this._bgTexture = this._util.createTexture(gl.LINEAR, emptyPixels, gl.canvas.width, gl.canvas.height);
+    }
+    _numPoints() {
+        return this._numParticles * this._particleLength;
+    }
+    _numSegments() {
+        return this._numParticles * 2 * (this._particleLength - 1);
+    }
     draw(timeStep) {
         var dt = Math.min(Math.max(0.0, Math.min(0.99999, timeStep)) * this._windTextures.ntex, this._windTextures.ntex);
         this._texIndex = Math.floor(dt);
-        this._timeFactor = dt - this._texIndex;
+        const prevTimeFac = this._timeFac;
+        this._timeFac = dt - this._texIndex;
+        const isTimeMoving = this._timeFac !== prevTimeFac;
+        this._currentOpacity = this.fadeOpacity * (isTimeMoving ? 0.99 : 1.0);
         const gl = this.gl;
-        // console.log(this._tex_index, this._time_factor);
         gl.disable(gl.DEPTH_TEST);
         gl.disable(gl.STENCIL_TEST);
         this._drawScreen();
-        this._updateParticleProp();
-        this._updateParticles();
-        this._particlePosTexture.reverse();
-        this._particlePropTexture.reverse();
+        this._updateParticleAge();
+        this._updateParticlePos();
     }
     _drawScreen() {
         const gl = this.gl;
         // draw the screen into a temporary framebuffer to retain it as the background on the next frame
         this._util.bindFramebuffer(this._framebuffer, this._screenTexture[0]);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        this._drawTexture(this._screenTexture[1], this.fadeOpacity);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+        this._drawTexture(this._screenTexture[1], this._currentOpacity);
         this._drawParticles();
-        this._util.bindFramebuffer(null);
-        // enable blending to support drawing on top of an existing background (e.g. a map)
+        this._util.bindFramebuffer(this._framebuffer, this._bgTexture);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+        this._drawBg();
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         this._drawTexture(this._screenTexture[0], 1.0);
         gl.disable(gl.BLEND);
         this._screenTexture.reverse();
-        // save the current screen as the background for the next frame
+        this._util.bindFramebuffer(null);
+        this._drawTexture(this._bgTexture, 1.0);
+        // enable blending to support drawing on top of an existing background (e.g. a map)
+    }
+    _drawBg() {
+        const gl = this.gl;
+        const program = this._programs.bg;
+        gl.useProgram(program.program);
+        gl.uniform2f(program.u_canvasOrigin, this._canvasOrigin[0], this._canvasOrigin[1]);
+        gl.uniform2f(program.u_canvasSize, this._canvasSize[0], this._canvasSize[1]);
+        this._util.bindTexture(program.u_windTex, this._windTextures.textures[this._texIndex]);
+        gl.uniform2f(program.u_windMin, this._windData.uMin, this._windData.vMin);
+        gl.uniform2f(program.u_windMax, this._windData.uMax, this._windData.vMax);
+        gl.uniform1f(program.u_windSpdMin, this.minSpeedColor);
+        gl.uniform1f(program.u_windSpdMax, this.maxSpeedColor);
+        gl.uniform1f(program.u_timeFac, this._timeFac);
+        this._util.bindTexture(program.u_colorRamp, this._colorRampTextureBg);
+        this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
     _drawTexture(texture, opacity) {
         const gl = this.gl;
         const program = this._programs.screen;
         gl.useProgram(program.program);
-        const windTex = this._windTextures.textures[this._texIndex];
-        gl.uniform1f(program.u_time_fac, this._timeFactor);
-        gl.uniform2f(program.u_wind_res, this._windData.width, this._windData.height);
-        gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
-        gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
-        this._util.bindTexture(program.u_wind, windTex);
-        this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
         this._util.bindTexture(program.u_screen, texture);
         gl.uniform1f(program.u_opacity, opacity);
+        this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
     _drawParticles() {
@@ -290,66 +383,110 @@ class WindGL {
         const program = this._programs.draw;
         gl.useProgram(program.program);
         const windTex = this._windTextures.textures[this._texIndex];
-        this._util.bindAttribute(this._particleIndexBuffer, program.a_index, 1);
-        this._util.bindTexture(program.u_wind, windTex);
-        gl.uniform1f(program.u_time_fac, this._timeFactor);
-        gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
-        gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
-        this._util.bindTexture(program.u_particles, this._particlePosTexture[0]);
-        this._util.bindTexture(program.u_particle_props, this._particlePropTexture[0]);
-        this._util.bindTexture(program.u_color_ramp, this._colorRampTexture);
-        gl.uniform1f(program.u_particles_res, this._particleStateResolution);
-        gl.uniform2f(program.u_wind_min, this._windData.uMin, this._windData.vMin);
-        gl.uniform2f(program.u_wind_max, this._windData.uMax, this._windData.vMax);
-        gl.uniform1f(program.u_wind_spd_min, this.minSpeedColor);
-        gl.uniform1f(program.u_wind_spd_max, this.maxSpeedColor);
-        gl.drawArrays(gl.POINTS, 0, this._numParticles);
+        this._util.bindAttribute(this._lineCoordBuffer, program.a_index, 2);
+        this._util.bindAttribute(this._lineRoleBuffer, program.a_role, 1);
+        this._util.bindTexture(program.u_windTex, windTex);
+        gl.uniform1f(program.u_timeFac, this._timeFac);
+        gl.uniform2f(program.u_canvasOrigin, this._canvasOrigin[0], this._canvasOrigin[1]);
+        gl.uniform2f(program.u_canvasSize, this._canvasSize[0], this._canvasSize[1]);
+        gl.uniform2f(program.u_particleTexRes, this._particleTexRes[0], this._particleTexRes[1]);
+        gl.uniform2f(program.u_windMin, this._windData.uMin, this._windData.vMin);
+        gl.uniform2f(program.u_windMax, this._windData.uMax, this._windData.vMax);
+        gl.uniform1f(program.u_windSpdMin, this.minSpeedColor);
+        gl.uniform1f(program.u_windSpdMax, this.maxSpeedColor);
+        this._util.bindTexture(program.u_colorRamp, this._colorRampTexture);
+        // gl.enable(gl.BLEND);
+        // gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        if (!this._particlePosTex || !this._particleAgeTex) {
+            throw new Error('Particle textures not initialized');
+        }
+        this._util.bindTexture(program.u_particlePosTex, this._particlePosTex.read);
+        this._util.bindTexture(program.u_particleAgeTex, this._particleAgeTex.read);
+        gl.drawArrays(gl.LINES, 0, this._numSegments());
+        // gl.disable(gl.BLEND);
     }
-    _updateParticles() {
+    _updateParticlePos() {
         const gl = this.gl;
-        this._util.bindFramebuffer(this._framebuffer, this._particlePosTexture[1]);
-        gl.viewport(0, 0, this._particleStateResolution, this._particleStateResolution);
-        const program = this._programs.update;
+        this._util.bindFramebuffer(this._framebuffer, this._particlePosTex.write);
+        gl.viewport(0, 0, this._particleTexRes[0], this._particleTexRes[1]);
+        const program = this._programs.updatePos;
         const windTex = this._windTextures.textures[this._texIndex];
         if (!windTex) {
             throw new Error('Wind texture not found');
         }
         gl.useProgram(program.program);
-        this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
-        this._util.bindTexture(program.u_wind, windTex);
-        this._util.bindTexture(program.u_particles, this._particlePosTexture[0]);
-        this._util.bindTexture(program.u_particle_props, this._particlePropTexture[0]);
-        gl.uniform1f(program.u_time_fac, this._timeFactor);
-        gl.uniform1f(program.u_rand_seed, Math.random());
-        gl.uniform2f(program.u_wind_res, this._windData.width, this._windData.height);
-        gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
-        gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
-        gl.uniform2f(program.u_wind_min, this._windData.uMin, this._windData.vMin);
-        gl.uniform2f(program.u_wind_max, this._windData.uMax, this._windData.vMax);
-        gl.uniform1f(program.u_speed_factor, this.speedFactor);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        if (!this._particleCoordBuffer) {
+            throw new Error('Particle coordinate buffer not initialized');
+        }
+        this._util.bindAttribute(this._particleCoordBuffer, program.a_pos, 2);
+        this._util.bindTexture(program.u_windTex, windTex);
+        this._util.bindTexture(program.u_particlePosTex, this._particlePosTex.read);
+        this._util.bindTexture(program.u_particleAgeTex, this._particleAgeTex.read);
+        gl.uniform1f(program.u_timeFac, this._timeFac);
+        gl.uniform1f(program.u_randSeed, Math.random());
+        gl.uniform2f(program.u_windRes, this._windData.width, this._windData.height);
+        gl.uniform2f(program.u_canvasOrigin, this._canvasOrigin[0], this._canvasOrigin[1]);
+        gl.uniform2f(program.u_canvasSize, this._canvasSize[0], this._canvasSize[1]);
+        gl.uniform2f(program.u_windMin, this._windData.uMin, this._windData.vMin);
+        gl.uniform2f(program.u_windMax, this._windData.uMax, this._windData.vMax);
+        gl.uniform1f(program.u_speedFactor, this.speedFactor);
+        gl.uniform2f(program.u_particleTexRes, this._particleTexRes[0], this._particleTexRes[1]);
+        gl.drawArrays(gl.POINTS, 0, this._numPoints());
+        this._particlePosTex = {
+            read: this._particlePosTex.write,
+            write: this._particlePosTex.read
+        };
     }
-    _updateParticleProp() {
+    _updateParticleAge() {
         const gl = this.gl;
-        this._util.bindFramebuffer(this._framebuffer, this._particlePropTexture[1]);
-        gl.viewport(0, 0, this._particleStateResolution, this._particleStateResolution);
-        const program = this._programs.updateProp;
+        this._util.bindFramebuffer(this._framebuffer, this._particleAgeTex.write);
+        gl.viewport(0, 0, this._particleTexRes[0], this._particleTexRes[1]);
+        const program = this._programs.updateAge;
         const windTex = this._windTextures.textures[this._texIndex];
         gl.useProgram(program.program);
-        this._util.bindAttribute(this._quadBuffer, program.a_pos, 2);
-        this._util.bindTexture(program.u_wind, windTex);
-        this._util.bindTexture(program.u_particles, this._particlePosTexture[0]);
-        this._util.bindTexture(program.u_particle_props, this._particlePropTexture[0]);
-        gl.uniform1f(program.u_time_fac, this._timeFactor);
-        gl.uniform2f(program.u_wind_res, this._windData.width, this._windData.height);
-        gl.uniform2f(program.u_canvas_origin, this._canvasOrigin[0], this._canvasOrigin[1]);
-        gl.uniform2f(program.u_canvas_size, this._canvasSize[0], this._canvasSize[1]);
-        gl.uniform2f(program.u_wind_min, this._windData.uMin, this._windData.vMin);
-        gl.uniform2f(program.u_wind_max, this._windData.uMax, this._windData.vMax);
-        gl.uniform1f(program.u_wind_speed_min, this._windData.uMin);
-        gl.uniform1f(program.u_wind_speed_max, this._windData.uMax);
-        gl.uniform1f(program.u_drop_rate, this.dropRate);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
+        this._util.bindAttribute(this._particleCoordBuffer, program.a_pos, 2);
+        this._util.bindTexture(program.u_windTex, windTex);
+        this._util.bindTexture(program.u_particlePosTex, this._particlePosTex.read);
+        this._util.bindTexture(program.u_particleAgeTex, this._particleAgeTex.read);
+        gl.uniform1f(program.u_timeFac, this._timeFac);
+        gl.uniform2f(program.u_windRes, this._windData.width, this._windData.height);
+        gl.uniform2f(program.u_canvasOrigin, this._canvasOrigin[0], this._canvasOrigin[1]);
+        gl.uniform2f(program.u_canvasSize, this._canvasSize[0], this._canvasSize[1]);
+        gl.uniform2f(program.u_windMin, this._windData.uMin, this._windData.vMin);
+        gl.uniform2f(program.u_windMax, this._windData.uMax, this._windData.vMax);
+        gl.uniform1f(program.u_windSpeedMin, this._windData.uMin);
+        gl.uniform1f(program.u_windSpeedMax, this._windData.uMax);
+        gl.uniform2f(program.u_particleTexRes, this._particleTexRes[0], this._particleTexRes[1]);
+        gl.uniform1f(program.u_particleLength, this._particleLength);
+        gl.uniform1f(program.u_dropRate, this.dropRate);
+        gl.uniform1f(program.u_speedFactor, this.speedFactor);
+        gl.drawArrays(gl.POINTS, 0, this._numPoints());
+        // swap the read and write textures
+        this._particleAgeTex = {
+            read: this._particleAgeTex.write,
+            write: this._particleAgeTex.read
+        };
+    }
+    readUint8Texture(texture, width, height) {
+        const gl = this.gl;
+        const framebuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+        const pixels = new Uint8Array(width * height * 4); // RGBA
+        gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.deleteFramebuffer(framebuffer);
+        // decode positions from RGBA to XY coordinates
+        // vec2(color.r / 255.0 + color.b, color.g / 255.0 + color.a)
+        let pos = [];
+        for (let i = 0; i < pixels.length; i += 4) {
+            const r = pixels[i] / 255.0 / 255.0; // normalize to [0, 1]
+            const g = pixels[i + 1] / 255.0 / 255.0; // normalize to [0, 1]
+            const b = pixels[i + 2] / 255.0;
+            const a = pixels[i + 3] / 255.0;
+            pos.push([r + b, g + a]);
+        }
+        return pos;
     }
 }
 function getColorRamp(colors) {
@@ -451,6 +588,487 @@ class WindTexture {
     }
 }
 
+/** Detect free variable `global` from Node.js. */
+var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
+
+/** Detect free variable `self`. */
+var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
+
+/** Used as a reference to the global object. */
+var root = freeGlobal || freeSelf || Function('return this')();
+
+/** Built-in value references. */
+var Symbol = root.Symbol;
+
+/** Used for built-in method references. */
+var objectProto$1 = Object.prototype;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto$1.hasOwnProperty;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var nativeObjectToString$1 = objectProto$1.toString;
+
+/** Built-in value references. */
+var symToStringTag$1 = Symbol ? Symbol.toStringTag : undefined;
+
+/**
+ * A specialized version of `baseGetTag` which ignores `Symbol.toStringTag` values.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @returns {string} Returns the raw `toStringTag`.
+ */
+function getRawTag(value) {
+  var isOwn = hasOwnProperty.call(value, symToStringTag$1),
+      tag = value[symToStringTag$1];
+
+  try {
+    value[symToStringTag$1] = undefined;
+    var unmasked = true;
+  } catch (e) {}
+
+  var result = nativeObjectToString$1.call(value);
+  if (unmasked) {
+    if (isOwn) {
+      value[symToStringTag$1] = tag;
+    } else {
+      delete value[symToStringTag$1];
+    }
+  }
+  return result;
+}
+
+/** Used for built-in method references. */
+var objectProto = Object.prototype;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var nativeObjectToString = objectProto.toString;
+
+/**
+ * Converts `value` to a string using `Object.prototype.toString`.
+ *
+ * @private
+ * @param {*} value The value to convert.
+ * @returns {string} Returns the converted string.
+ */
+function objectToString(value) {
+  return nativeObjectToString.call(value);
+}
+
+/** `Object#toString` result references. */
+var nullTag = '[object Null]',
+    undefinedTag = '[object Undefined]';
+
+/** Built-in value references. */
+var symToStringTag = Symbol ? Symbol.toStringTag : undefined;
+
+/**
+ * The base implementation of `getTag` without fallbacks for buggy environments.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @returns {string} Returns the `toStringTag`.
+ */
+function baseGetTag(value) {
+  if (value == null) {
+    return value === undefined ? undefinedTag : nullTag;
+  }
+  return (symToStringTag && symToStringTag in Object(value))
+    ? getRawTag(value)
+    : objectToString(value);
+}
+
+/**
+ * Checks if `value` is object-like. A value is object-like if it's not `null`
+ * and has a `typeof` result of "object".
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ * @example
+ *
+ * _.isObjectLike({});
+ * // => true
+ *
+ * _.isObjectLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isObjectLike(_.noop);
+ * // => false
+ *
+ * _.isObjectLike(null);
+ * // => false
+ */
+function isObjectLike(value) {
+  return value != null && typeof value == 'object';
+}
+
+/** `Object#toString` result references. */
+var symbolTag = '[object Symbol]';
+
+/**
+ * Checks if `value` is classified as a `Symbol` primitive or object.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+ * @example
+ *
+ * _.isSymbol(Symbol.iterator);
+ * // => true
+ *
+ * _.isSymbol('abc');
+ * // => false
+ */
+function isSymbol(value) {
+  return typeof value == 'symbol' ||
+    (isObjectLike(value) && baseGetTag(value) == symbolTag);
+}
+
+/** Used to match a single whitespace character. */
+var reWhitespace = /\s/;
+
+/**
+ * Used by `_.trim` and `_.trimEnd` to get the index of the last non-whitespace
+ * character of `string`.
+ *
+ * @private
+ * @param {string} string The string to inspect.
+ * @returns {number} Returns the index of the last non-whitespace character.
+ */
+function trimmedEndIndex(string) {
+  var index = string.length;
+
+  while (index-- && reWhitespace.test(string.charAt(index))) {}
+  return index;
+}
+
+/** Used to match leading whitespace. */
+var reTrimStart = /^\s+/;
+
+/**
+ * The base implementation of `_.trim`.
+ *
+ * @private
+ * @param {string} string The string to trim.
+ * @returns {string} Returns the trimmed string.
+ */
+function baseTrim(string) {
+  return string
+    ? string.slice(0, trimmedEndIndex(string) + 1).replace(reTrimStart, '')
+    : string;
+}
+
+/**
+ * Checks if `value` is the
+ * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
+ * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(_.noop);
+ * // => true
+ *
+ * _.isObject(null);
+ * // => false
+ */
+function isObject(value) {
+  var type = typeof value;
+  return value != null && (type == 'object' || type == 'function');
+}
+
+/** Used as references for various `Number` constants. */
+var NAN = 0 / 0;
+
+/** Used to detect bad signed hexadecimal string values. */
+var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
+
+/** Used to detect binary string values. */
+var reIsBinary = /^0b[01]+$/i;
+
+/** Used to detect octal string values. */
+var reIsOctal = /^0o[0-7]+$/i;
+
+/** Built-in method references without a dependency on `root`. */
+var freeParseInt = parseInt;
+
+/**
+ * Converts `value` to a number.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to process.
+ * @returns {number} Returns the number.
+ * @example
+ *
+ * _.toNumber(3.2);
+ * // => 3.2
+ *
+ * _.toNumber(Number.MIN_VALUE);
+ * // => 5e-324
+ *
+ * _.toNumber(Infinity);
+ * // => Infinity
+ *
+ * _.toNumber('3.2');
+ * // => 3.2
+ */
+function toNumber(value) {
+  if (typeof value == 'number') {
+    return value;
+  }
+  if (isSymbol(value)) {
+    return NAN;
+  }
+  if (isObject(value)) {
+    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
+    value = isObject(other) ? (other + '') : other;
+  }
+  if (typeof value != 'string') {
+    return value === 0 ? value : +value;
+  }
+  value = baseTrim(value);
+  var isBinary = reIsBinary.test(value);
+  return (isBinary || reIsOctal.test(value))
+    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
+    : (reIsBadHex.test(value) ? NAN : +value);
+}
+
+/**
+ * Gets the timestamp of the number of milliseconds that have elapsed since
+ * the Unix epoch (1 January 1970 00:00:00 UTC).
+ *
+ * @static
+ * @memberOf _
+ * @since 2.4.0
+ * @category Date
+ * @returns {number} Returns the timestamp.
+ * @example
+ *
+ * _.defer(function(stamp) {
+ *   console.log(_.now() - stamp);
+ * }, _.now());
+ * // => Logs the number of milliseconds it took for the deferred invocation.
+ */
+var now = function() {
+  return root.Date.now();
+};
+
+/** Error message constants. */
+var FUNC_ERROR_TEXT = 'Expected a function';
+
+/* Built-in method references for those with the same name as other `lodash` methods. */
+var nativeMax = Math.max,
+    nativeMin = Math.min;
+
+/**
+ * Creates a debounced function that delays invoking `func` until after `wait`
+ * milliseconds have elapsed since the last time the debounced function was
+ * invoked. The debounced function comes with a `cancel` method to cancel
+ * delayed `func` invocations and a `flush` method to immediately invoke them.
+ * Provide `options` to indicate whether `func` should be invoked on the
+ * leading and/or trailing edge of the `wait` timeout. The `func` is invoked
+ * with the last arguments provided to the debounced function. Subsequent
+ * calls to the debounced function return the result of the last `func`
+ * invocation.
+ *
+ * **Note:** If `leading` and `trailing` options are `true`, `func` is
+ * invoked on the trailing edge of the timeout only if the debounced function
+ * is invoked more than once during the `wait` timeout.
+ *
+ * If `wait` is `0` and `leading` is `false`, `func` invocation is deferred
+ * until to the next tick, similar to `setTimeout` with a timeout of `0`.
+ *
+ * See [David Corbacho's article](https://css-tricks.com/debouncing-throttling-explained-examples/)
+ * for details over the differences between `_.debounce` and `_.throttle`.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Function
+ * @param {Function} func The function to debounce.
+ * @param {number} [wait=0] The number of milliseconds to delay.
+ * @param {Object} [options={}] The options object.
+ * @param {boolean} [options.leading=false]
+ *  Specify invoking on the leading edge of the timeout.
+ * @param {number} [options.maxWait]
+ *  The maximum time `func` is allowed to be delayed before it's invoked.
+ * @param {boolean} [options.trailing=true]
+ *  Specify invoking on the trailing edge of the timeout.
+ * @returns {Function} Returns the new debounced function.
+ * @example
+ *
+ * // Avoid costly calculations while the window size is in flux.
+ * jQuery(window).on('resize', _.debounce(calculateLayout, 150));
+ *
+ * // Invoke `sendMail` when clicked, debouncing subsequent calls.
+ * jQuery(element).on('click', _.debounce(sendMail, 300, {
+ *   'leading': true,
+ *   'trailing': false
+ * }));
+ *
+ * // Ensure `batchLog` is invoked once after 1 second of debounced calls.
+ * var debounced = _.debounce(batchLog, 250, { 'maxWait': 1000 });
+ * var source = new EventSource('/stream');
+ * jQuery(source).on('message', debounced);
+ *
+ * // Cancel the trailing debounced invocation.
+ * jQuery(window).on('popstate', debounced.cancel);
+ */
+function debounce(func, wait, options) {
+  var lastArgs,
+      lastThis,
+      maxWait,
+      result,
+      timerId,
+      lastCallTime,
+      lastInvokeTime = 0,
+      leading = false,
+      maxing = false,
+      trailing = true;
+
+  if (typeof func != 'function') {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  wait = toNumber(wait) || 0;
+  if (isObject(options)) {
+    leading = !!options.leading;
+    maxing = 'maxWait' in options;
+    maxWait = maxing ? nativeMax(toNumber(options.maxWait) || 0, wait) : maxWait;
+    trailing = 'trailing' in options ? !!options.trailing : trailing;
+  }
+
+  function invokeFunc(time) {
+    var args = lastArgs,
+        thisArg = lastThis;
+
+    lastArgs = lastThis = undefined;
+    lastInvokeTime = time;
+    result = func.apply(thisArg, args);
+    return result;
+  }
+
+  function leadingEdge(time) {
+    // Reset any `maxWait` timer.
+    lastInvokeTime = time;
+    // Start the timer for the trailing edge.
+    timerId = setTimeout(timerExpired, wait);
+    // Invoke the leading edge.
+    return leading ? invokeFunc(time) : result;
+  }
+
+  function remainingWait(time) {
+    var timeSinceLastCall = time - lastCallTime,
+        timeSinceLastInvoke = time - lastInvokeTime,
+        timeWaiting = wait - timeSinceLastCall;
+
+    return maxing
+      ? nativeMin(timeWaiting, maxWait - timeSinceLastInvoke)
+      : timeWaiting;
+  }
+
+  function shouldInvoke(time) {
+    var timeSinceLastCall = time - lastCallTime,
+        timeSinceLastInvoke = time - lastInvokeTime;
+
+    // Either this is the first call, activity has stopped and we're at the
+    // trailing edge, the system time has gone backwards and we're treating
+    // it as the trailing edge, or we've hit the `maxWait` limit.
+    return (lastCallTime === undefined || (timeSinceLastCall >= wait) ||
+      (timeSinceLastCall < 0) || (maxing && timeSinceLastInvoke >= maxWait));
+  }
+
+  function timerExpired() {
+    var time = now();
+    if (shouldInvoke(time)) {
+      return trailingEdge(time);
+    }
+    // Restart the timer.
+    timerId = setTimeout(timerExpired, remainingWait(time));
+  }
+
+  function trailingEdge(time) {
+    timerId = undefined;
+
+    // Only invoke if we have `lastArgs` which means `func` has been
+    // debounced at least once.
+    if (trailing && lastArgs) {
+      return invokeFunc(time);
+    }
+    lastArgs = lastThis = undefined;
+    return result;
+  }
+
+  function cancel() {
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+    }
+    lastInvokeTime = 0;
+    lastArgs = lastCallTime = lastThis = timerId = undefined;
+  }
+
+  function flush() {
+    return timerId === undefined ? result : trailingEdge(now());
+  }
+
+  function debounced() {
+    var time = now(),
+        isInvoking = shouldInvoke(time);
+
+    lastArgs = arguments;
+    lastThis = this;
+    lastCallTime = time;
+
+    if (isInvoking) {
+      if (timerId === undefined) {
+        return leadingEdge(lastCallTime);
+      }
+      if (maxing) {
+        // Handle invocations in a tight loop.
+        clearTimeout(timerId);
+        timerId = setTimeout(timerExpired, wait);
+        return invokeFunc(lastCallTime);
+      }
+    }
+    if (timerId === undefined) {
+      timerId = setTimeout(timerExpired, wait);
+    }
+    return result;
+  }
+  debounced.cancel = cancel;
+  debounced.flush = flush;
+  return debounced;
+}
+
 const L = globalThis.L;
 class LeafletWindGL extends L.Layer {
     _windData;
@@ -483,13 +1101,18 @@ class LeafletWindGL extends L.Layer {
         this._windGl = new WindGL(gl, this._windData);
         this._canvas.style.position = 'absolute';
         map.getPanes().overlayPane.appendChild(this._canvas);
-        map.on('move resize zoom', this._draw, this);
+        map.on('movestart resizestart zoomstart', this._stopAnimation, this);
+        map.on('moveend resizeend zoomend', this._debounceDraw, this);
         this._draw();
         return this;
     }
+    _debounceDraw = debounce(() => {
+        this._draw();
+    }, 16);
     onRemove(map) {
         map.getPanes().overlayPane.removeChild(this._canvas);
-        map.off('move resize zoom', this._draw, this);
+        map.off('movestart resizestart zoomstart', this._stopAnimation, this);
+        map.off('moveend resizeend zoomend', this._draw, this);
         this._stopAnimation();
         return this;
     }
@@ -521,6 +1144,9 @@ class LeafletWindGL extends L.Layer {
         // Define geographic bounds: 0 to 30N latitude, 20 to 65E longitude
         this._setCanvasBounds();
         this._windGl.reset();
+        setTimeout(() => {
+            this._startAnimation();
+        }, 1);
         this._startAnimation();
     }
     _setCanvasGrid(canvasBound, gridBound) {
