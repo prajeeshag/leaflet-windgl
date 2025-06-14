@@ -1,6 +1,17 @@
 import * as zarr from "https://cdn.jsdelivr.net/npm/zarrita/+esm";
+import { decompressSync, strFromU8 } from 'https://cdn.jsdelivr.net/npm/fflate@0.8.2/+esm';
 import { WindData, LeafletWindGL } from "./js/leaflet-windgl.js";
 import { TimeSlider } from "./js/leaflet-timeslider.js";
+
+
+async function fetchGzippedGeoJSON(url) {
+    const res = await fetch(url);
+    const compressed = new Uint8Array(await res.arrayBuffer());
+    const decompressed = decompressSync(compressed);
+    const text = strFromU8(decompressed);
+    return JSON.parse(text);
+}
+
 
 const baseUrl = `${window.location}`;
 const baseDataUrl = `${baseUrl}/data.zarr/`;
@@ -39,9 +50,7 @@ const map = L.map("map", {
 // // Set map background to black
 map.getContainer().style.background = "black";
 
-
-fetch(`${baseUrl}/countryMap.geojson`)
-    .then(res => res.json())
+fetchGzippedGeoJSON(`${baseUrl}/countryMap.geojson.gz`)
     .then(geojson => {
         const borderLayer = L.geoJSON(geojson, {
             style: {
@@ -49,10 +58,9 @@ fetch(`${baseUrl}/countryMap.geojson`)
                 weight: 1,
                 fill: false
             }
-        })
-        borderLayer.addTo(map)
-    })
-
+        });
+        borderLayer.addTo(map);
+    });
 
 // // L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
